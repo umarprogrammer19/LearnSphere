@@ -47,11 +47,11 @@ export default function SignupPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="first-name">First Name</Label>
-              <Input id="first-name" placeholder="John" required />
+              <Input id="first-name" placeholder="Your First Name" required />
             </div>
             <div className="space-y-2">
               <Label htmlFor="last-name">Last Name</Label>
-              <Input id="last-name" placeholder="Doe" required />
+              <Input id="last-name" placeholder="Your Last Name" required />
             </div>
           </div>
 
@@ -60,7 +60,7 @@ export default function SignupPage() {
             <Input
               id="email"
               type="email"
-              placeholder="john.doe@example.com"
+              placeholder="email@example.com"
               required
             />
           </div>
