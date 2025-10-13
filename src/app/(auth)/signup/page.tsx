@@ -20,6 +20,14 @@ import {
   CardTitle,
   CardFooter,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   Popover,
@@ -65,6 +73,7 @@ export default function SignupPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(false);
+  const [showVerificationDialog, setShowVerificationDialog] = React.useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -92,14 +101,8 @@ export default function SignupPage() {
       };
 
       await handleEmailSignUp(values.email, values.password, userData);
-
-      toast({
-        title: "Account Created!",
-        description: "A verification email has been sent. Please check your inbox to continue.",
-      });
-
-      // Redirect to login page where they will be prompted to verify
-      router.push(`/login`);
+      
+      setShowVerificationDialog(true);
 
     } catch (error: any) {
        let friendlyMessage = "An unknown error occurred.";
@@ -131,7 +134,13 @@ export default function SignupPage() {
     }
   }
 
+  const handleDialogClose = () => {
+    setShowVerificationDialog(false);
+    router.push('/login');
+  }
+
   return (
+    <>
     <Card className="w-full max-w-2xl shadow-lg rounded-xl">
       <CardHeader className="text-center">
         <CardTitle className="text-3xl font-bold font-headline">
@@ -349,5 +358,21 @@ export default function SignupPage() {
         </Link>
       </CardFooter>
     </Card>
+    <Dialog open={showVerificationDialog} onOpenChange={handleDialogClose}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Verify Your Email</DialogTitle>
+            <DialogDescription>
+              A verification email has been sent to your address. Please check your inbox and click the link to activate your account before logging in.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={handleDialogClose}>
+              Got It
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

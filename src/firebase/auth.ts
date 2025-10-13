@@ -15,20 +15,23 @@ import {
   signInWithPhoneNumber,
   ConfirmationResult,
   User,
-  Auth,
 } from "firebase/auth";
 import {
   getFirestore,
   doc,
   setDoc,
   serverTimestamp,
+  getDoc,
 } from "firebase/firestore";
 import { initializeFirebase } from "@/firebase";
 
 const { auth, firestore } = initializeFirebase();
 
-// Set auth domain to fix popup issue
-auth.tenantId = auth.tenantId || null;
+// Set auth domain to fix popup issue with social logins
+if (auth.tenantId === undefined) {
+  auth.tenantId = null;
+}
+
 
 // User data structure
 interface UserData {
@@ -44,6 +47,25 @@ interface UserData {
 // --- User Profile Management ---
 const createUserProfile = async (user: User, additionalData: Partial<UserData> = {}) => {
   const userRef = doc(firestore, "users", user.uid);
+  const userDoc = await getDoc(userRef);
+
+  // If user document already exists, don't overwrite with defaults
+  if (userDoc.exists()) {
+    const updateData: any = {
+      lastActiveAt: serverTimestamp(),
+      isEmailVerified: user.emailVerified,
+      profileImageUrl: user.photoURL || userDoc.data()?.profileImageUrl || '',
+    };
+     if (!userDoc.data().firstName && additionalData.firstName) {
+      updateData.firstName = additionalData.firstName;
+    }
+    if (!userDoc.data().lastName && additionalData.lastName) {
+      updateData.lastName = additionalData.lastName;
+    }
+    await setDoc(userRef, updateData, { merge: true });
+    return;
+  }
+
   const data = {
     uid: user.uid,
     email: user.email || additionalData.email || "",
@@ -63,12 +85,16 @@ const createUserProfile = async (user: User, additionalData: Partial<UserData> =
     profileImageUrl: user.photoURL || "",
     schoolName: "",
     availableSlots: [],
+    locationType: "",
+    location: { latitude: "", longitude: "" },
+    CNIC: "",
+    degreeScreenshots: [],
     
     // System fields
     isEmailVerified: user.emailVerified,
     isPhoneVerified: !!user.phoneNumber,
-    tutorVerificationStatus: "pending",
-    isProfileCompleted: false, // New field
+    tutorVerificationStatus: "unverified",
+    isProfileCompleted: false,
     
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -144,18 +170,15 @@ const handleSocialSignIn = async (providerName: "google" | "microsoft") => {
     }
 };
 
-export const handleGoogleSignIn = () => {
-  return handleSocialSignIn("google");
-};
+export const handleGoogleSignIn = () => handleSocialSignIn("google");
 
-export const handleMicrosoftSignIn = () => {
-  return handleSocialSignIn("microsoft");
-};
+export const handleMicrosoftSignIn = () => handleSocialSignIn("microsoft");
 
 // --- Phone Auth (OTP) ---
 export const getRecaptchaVerifier = (containerId: string) => {
   if (window.recaptchaVerifier) {
-    return window.recaptchaVerifier;
+    // To avoid re-rendering issues, we can clear the previous instance
+    window.recaptchaVerifier.clear();
   }
   window.recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
     size: "invisible",
@@ -178,7 +201,7 @@ export const confirmOtp = async (
   const result = await confirmationResult.confirm(code);
   const user = result.user;
   const userRef = doc(firestore, `users/${user.uid}`);
-  await setDoc(userRef, { isPhoneVerified: true, phoneNumber: user.phoneNumber }, { merge: true });
+  await setDoc(userRef, { isPhoneVerified: true, phoneNumber: user.phoneNumber, updatedAt: serverTimestamp() }, { merge: true });
   return user;
 };
 

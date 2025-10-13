@@ -8,10 +8,12 @@ import { initializeFirebase } from "@/firebase";
 
 const { firestore } = initializeFirebase();
 
-interface UserData extends DocumentData {
+export interface UserData extends DocumentData {
   firstName: string;
   lastName: string;
   isProfileCompleted: boolean;
+  profileImageUrl?: string;
+  // Add other fields from your user schema that you need globally
 }
 
 export const useUser = () => {
@@ -33,6 +35,7 @@ export const useUser = () => {
 
   useEffect(() => {
     if (user) {
+      setIsLoading(true);
       const userDocRef = doc(firestore, "users", user.uid);
       const unsubscribeFirestore = onSnapshot(userDocRef, (docSnap) => {
         if (docSnap.exists()) {
