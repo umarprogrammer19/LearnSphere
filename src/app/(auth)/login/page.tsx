@@ -75,19 +75,25 @@ export default function LoginPage() {
   async function handleProviderSignIn(provider: "google" | "microsoft") {
     setIsProviderLoading(provider);
     try {
-      if (provider === "google") {
-        await handleGoogleSignIn();
-      } else {
-        await handleMicrosoftSignIn();
+      const signInMethod =
+        provider === "google" ? handleGoogleSignIn : handleMicrosoftSignIn;
+      const user = await signInMethod();
+
+      // Only proceed if the user object is returned (i.e., popup wasn't closed)
+      if (user) {
+        toast({ title: "Login Successful" });
+        router.push("/");
       }
-      toast({ title: "Login Successful" });
-      router.push("/");
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Login Failed",
-        description: error.message,
-      });
+      // Avoid showing a toast for user-closed popups as it's handled silently in auth.ts
+      if (error.code !== "auth/popup-closed-by-user") {
+        toast({
+          variant: "destructive",
+          title: "Login Failed",
+          description:
+            error.message || "An unexpected error occurred during sign-in.",
+        });
+      }
     } finally {
       setIsProviderLoading(null);
     }

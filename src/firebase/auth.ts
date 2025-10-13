@@ -10,7 +10,7 @@ import {
   GoogleAuthProvider,
   OAuthProvider,
   signOut,
-  onAuthStateChanged,
+  onAuthStateChanged as onFirebaseAuthStateChanged,
   RecaptchaVerifier,
   signInWithPhoneNumber,
   ConfirmationResult,
@@ -111,25 +111,39 @@ export const handleEmailSignIn = async (email: string, password: string) => {
 };
 
 // --- Social Logins ---
-const handleSocialSignIn = async (provider: GoogleAuthProvider | OAuthProvider) => {
-  const userCredential = await signInWithPopup(auth, provider);
-  const user = userCredential.user;
+const handleSocialSignIn = async (provider: "google" | "microsoft") => {
+    const authProvider = provider === 'google' 
+        ? new GoogleAuthProvider() 
+        : new OAuthProvider("microsoft.com");
   
-  const [firstName, ...lastNameParts] = (user.displayName || "").split(" ");
-  const lastName = lastNameParts.join(" ");
+    try {
+        const userCredential = await signInWithPopup(auth, authProvider);
+        const user = userCredential.user;
+        
+        const [firstName, ...lastNameParts] = (user.displayName || "").split(" ");
+        const lastName = lastNameParts.join(" ");
 
-  await createUserProfile(user, { firstName, lastName });
-  return user;
+        await createUserProfile(user, { firstName, lastName, email: user.email ?? '' });
+        return user;
+    } catch (error: any) {
+        if (error.code === 'auth/popup-closed-by-user') {
+            console.warn('Authentication popup was closed by the user.');
+            // This is a user action, not necessarily an app error. 
+            // We can choose to return null or re-throw a more specific error.
+            return null;
+        }
+        // For other errors, we log and re-throw to be handled by the caller.
+        console.error(`Error during ${provider} sign-in:`, error);
+        throw error;
+    }
 };
 
 export const handleGoogleSignIn = () => {
-  const provider = new GoogleAuthProvider();
-  return handleSocialSignIn(provider);
+  return handleSocialSignIn("google");
 };
 
 export const handleMicrosoftSignIn = () => {
-  const provider = new OAuthProvider("microsoft.com");
-  return handleSocialSignIn(provider);
+  return handleSocialSignIn("microsoft");
 };
 
 // --- Phone Auth (OTP) ---
@@ -177,11 +191,12 @@ export const handleSignOut = async () => {
 
 // --- Auth State Observer ---
 export const onAuthStateChange = (callback: (user: User | null) => void) => {
-  return onAuthStateChanged(auth, callback);
+  return onFirebaseAuthStateChanged(auth, callback);
 };
 
 declare global {
   interface Window {
     recaptchaVerifier?: RecaptchaVerifier;
+    confirmationResult?: ConfirmationResult;
   }
 }
