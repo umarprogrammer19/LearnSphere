@@ -49,9 +49,11 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 max-w-screen-2xl items-center">
-        <Logo />
-        <nav className="hidden md:flex items-center space-x-6 text-sm font-medium ml-10">
+      <div className="container flex h-[90px] max-w-screen items-center">
+        <div className="relative top-1">
+          <Logo />
+        </div>
+        <nav className="hidden md:flex items-center space-x-6 text-sm font-medium ml-5">
           {navLinks.map((link) => (
             <Link
               key={link.href}
