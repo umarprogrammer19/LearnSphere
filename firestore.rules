@@ -1,0 +1,68 @@
+/**
+ * @file Firebase Security Rules for LearnSphere Firestore.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model for all user profile data.
+ * Only the authenticated user can read or write their own profile data.
+ *
+ * Data Structure:
+ * All user data is stored under the `/users/{userId}` path, where `{userId}`
+ * corresponds to the Firebase Auth UID of the user. User documents contain profile
+ * information.
+ *
+ * Key Security Decisions:
+ * - User listing is disabled to prevent enumeration of user accounts.
+ * - All write operations are strictly validated against the authenticated user's UID
+ *   to ensure data integrity and prevent unauthorized modifications.
+ *
+ * Denormalization for Authorization:
+ * - The `uid` of the user is used as the document ID in the `/users/{userId}` path.
+ *   This denormalization allows for efficient and secure authorization checks
+ *   using the `isOwner(userId)` helper function, without requiring additional reads.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Enforces user-ownership for user profile data.
+     * @path /users/{userId}
+     * @allow (create) - Authenticated user with UID 'user123' can create a profile at /users/user123.
+     * @allow (get, update, delete) - Authenticated user with UID 'user123' can read, update, and delete their profile at /users/user123.
+     * @deny (create) - Authenticated user with UID 'user456' cannot create a profile at /users/user123.
+     * @deny (get, update, delete) - Authenticated user with UID 'user456' cannot read, update, or delete the profile at /users/user123.
+     * @principle Enforces document ownership for all operations on user profiles.
+     */
+    match /users/{userId} {
+      // Helper function to check if the authenticated user is the owner of the document.
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      // Helper function to check if the authenticated user is the owner of an existing document.
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      // Allow authenticated user to read their profile.
+      allow get: if isOwner(userId);
+
+      // Allow authenticated user to create their profile if the UID matches.
+      allow create: if isOwner(userId) && request.resource.data.uid == userId;
+
+      // Allow authenticated user to update their profile if they are the owner and the UID is immutable.
+      allow update: if isExistingOwner(userId) && request.resource.data.uid == resource.data.uid;
+
+      // Allow authenticated user to delete their profile if they are the owner.
+      allow delete: if isExistingOwner(userId);
+
+      // Prevent anyone from listing all users.
+      allow list: if false;
+    }
+  }
+
+  // Check if the user is signed in.
+  function isSignedIn() {
+    return request.auth != null;
+  }
+}

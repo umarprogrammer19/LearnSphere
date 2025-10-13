@@ -1,0 +1,165 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user in the LearnSphere application.",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Unique identifier for the user entity. (Primary Key)"
+        },
+        "role": {
+          "type": "string",
+          "description": "The user's role in the application.",
+          "format": "string",
+          "items": {
+            "type": "string"
+          }
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The user's first name."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The user's last name."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "The user's phone number."
+        },
+        "dateOfBirth": {
+          "type": "string",
+          "description": "The user's date of birth."
+        },
+        "country": {
+          "type": "string",
+          "description": "The user's country."
+        },
+        "city": {
+          "type": "string",
+          "description": "The user's city."
+        },
+        "isEmailVerified": {
+          "type": "boolean",
+          "description": "Indicates whether the user's email address has been verified."
+        },
+        "isPhoneVerified": {
+          "type": "boolean",
+          "description": "Indicates whether the user's phone number has been verified."
+        },
+        "tutorVerificationStatus": {
+          "type": "string",
+          "description": "The verification status of a tutor.",
+          "format": "string",
+          "items": {
+            "type": "string"
+          }
+        },
+        "qualification": {
+          "type": "string",
+          "description": "The user's highest qualification (if a tutor)."
+        },
+        "board": {
+          "type": "string",
+          "description": "The student's education board (if a student)."
+        },
+        "classGrade": {
+          "type": "string",
+          "description": "The student's class grade (if a student)."
+        },
+        "about": {
+          "type": "string",
+          "description": "A short description about the user."
+        },
+        "profileImageUrl": {
+          "type": "string",
+          "description": "URL to the user's profile image.",
+          "format": "uri"
+        },
+        "schoolName": {
+          "type": "string",
+          "description": "The student's school name (if a student)."
+        },
+        "availableSlots": {
+          "type": "array",
+          "description": "Available time slots for the tutor.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The time the user was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "The time the user was last updated.",
+          "format": "date-time"
+        },
+        "lastActiveAt": {
+          "type": "string",
+          "description": "The time the user was last active.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "uid",
+        "firstName",
+        "lastName",
+        "email",
+        "phoneNumber",
+        "dateOfBirth",
+        "country",
+        "city",
+        "isEmailVerified",
+        "isPhoneVerified",
+        "tutorVerificationStatus",
+        "qualification",
+        "board",
+        "classGrade",
+        "about",
+        "profileImageUrl",
+        "schoolName",
+        "availableSlots",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profile data.  Includes fields collected during signup (firstName, lastName, email, phoneNumber, dateOfBirth, country, city) and defaults for other profile attributes (qualification, board, classGrade, about, profileImageUrl, schoolName, availableSlots). The 'uid' parameter is used for path-based ownership.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user (same as Firebase Auth UID)."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to ensure Authorization Independence, Role-Based Access Control (DBAC), and scalable `list` operations. All authorization data is denormalized to avoid `get()` calls in security rules, enabling atomic operations. The structure prioritizes security, clarity, and maintainability.\n\nThe core entity is `User`, stored at `/users/{uid}`.  User documents contain all necessary profile information, including the user's role. This design promotes simplicity and enables straightforward security rules based on `request.auth.uid`.\n\nThis structure inherently supports the required QAPs. Path-based ownership (`/users/{uid}`) and the segregation of user data by `uid` enable secure list operations. Security rules can easily restrict access to a user's data based on their `uid`."
+  }
+}
