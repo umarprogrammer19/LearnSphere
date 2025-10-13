@@ -56,7 +56,7 @@ export default function Home() {
       <Header />
       <main className="flex-grow">
         {/* Hero Section */}
-        <section className="relative bg-white pt-20 pb-10 lg:pt-[120px] lg:pb-20">
+        <section className="relative bg-white px-20 pt-20 pb-10 lg:pt-[120px] lg:pb-20">
           <div className="container mx-auto">
             <div className="flex flex-wrap items-center -mx-4">
               <div className="w-full px-4 lg:w-1/2">
@@ -97,7 +97,7 @@ export default function Home() {
         </section>
 
         {/* About Us Section */}
-        <section id="about" className="py-20 lg:py-32 bg-gray-50">
+        <section id="about" className="py-20 px-20 lg:py-32 bg-gray-50">
           <div className="container mx-auto px-4">
             <div className="mx-auto max-w-3xl text-center">
               <h2 className="text-3xl font-bold font-headline text-gray-900 sm:text-4xl">
@@ -111,7 +111,7 @@ export default function Home() {
         </section>
 
         {/* Features Section */}
-        <section id="features" className="py-20 lg:py-32">
+        <section id="features" className="py-20 lg:py-32 px-20">
             <div className="container mx-auto px-4">
               <div className="mx-auto max-w-3xl text-center mb-16">
                   <h2 className="text-3xl font-bold font-headline text-gray-900 sm:text-4xl">Why Choose Us?</h2>
