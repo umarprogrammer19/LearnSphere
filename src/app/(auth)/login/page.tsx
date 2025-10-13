@@ -12,41 +12,8 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
-    <path d="M12 15a6 6 0 0 0 4.243-1.757l2.121-2.122a2 2 0 0 0 0-2.828l-2.121-2.122A6 6 0 0 0 12 6V3.5" />
-    <path d="M12 15v2.5" />
-    <path d="M16.243 8.757 12 13" />
-    <path d="m7.757 8.757 4.243 4.243" />
-  </svg>
-);
-
-const MicrosoftIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    width="24" 
-    height="24" 
-    viewBox="0 0 24 24" 
-    fill="currentColor"
-    {...props}
-  >
-    <path d="M11.5 22.5H2.5v-9h9v9zm0-11h-9v-9h9v9zm11 11h-9v-9h9v9zm0-11h-9v-9h9v9z"/>
-  </svg>
-);
-
+import { FcGoogle } from "react-icons/fc";
+import { FaMicrosoft } from "react-icons/fa";
 
 export default function LoginPage() {
   return (
@@ -87,11 +54,11 @@ export default function LoginPage() {
         </div>
         <div className="grid grid-cols-2 gap-4">
           <Button variant="outline">
-            <GoogleIcon className="mr-2 h-4 w-4" />
+            <FcGoogle className="mr-2 h-4 w-4" />
             Google
           </Button>
           <Button variant="outline">
-            <MicrosoftIcon className="mr-2 h-4 w-4" />
+            <FaMicrosoft  className="mr-2 h-4 w-4" />
             Microsoft
           </Button>
         </div>
