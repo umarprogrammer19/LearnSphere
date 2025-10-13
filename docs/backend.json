@@ -13,10 +13,7 @@
         "role": {
           "type": "string",
           "description": "The user's role in the application.",
-          "format": "string",
-          "items": {
-            "type": "string"
-          }
+          "enum": ["student", "teacher", "shop_owner", "rider"]
         },
         "firstName": {
           "type": "string",
@@ -58,10 +55,7 @@
         "tutorVerificationStatus": {
           "type": "string",
           "description": "The verification status of a tutor.",
-          "format": "string",
-          "items": {
-            "type": "string"
-          }
+          "enum": ["pending", "verified", "rejected"]
         },
         "qualification": {
           "type": "string",
@@ -92,8 +86,18 @@
           "type": "array",
           "description": "Available time slots for the tutor.",
           "items": {
-            "type": "string"
+            "type": "object",
+            "properties": {
+              "startISO": {"type": "string", "format": "date-time"},
+              "endISO": {"type": "string", "format": "date-time"},
+              "mode": {"type": "string", "enum": ["in_person", "online"]},
+              "locationType": {"type": "string", "enum": ["student_home", "tutor_home", "center", "online"]}
+            }
           }
+        },
+        "isProfileCompleted": {
+          "type": "boolean",
+          "description": "Indicates whether the user has completed their profile setup."
         },
         "createdAt": {
           "type": "string",
@@ -113,32 +117,23 @@
       },
       "required": [
         "uid",
+        "role",
         "firstName",
         "lastName",
         "email",
-        "phoneNumber",
-        "dateOfBirth",
-        "country",
-        "city",
         "isEmailVerified",
         "isPhoneVerified",
-        "tutorVerificationStatus",
-        "qualification",
-        "board",
-        "classGrade",
-        "about",
-        "profileImageUrl",
-        "schoolName",
-        "availableSlots",
-        "createdAt",
-        "updatedAt"
+        "isProfileCompleted"
       ]
     }
   },
   "auth": {
     "providers": [
       "password",
-      "anonymous"
+      "anonymous",
+      "google.com",
+      "microsoft.com",
+      "phone"
     ]
   },
   "firestore": {

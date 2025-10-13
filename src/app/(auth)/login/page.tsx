@@ -62,10 +62,26 @@ export default function LoginPage() {
       toast({ title: "Login Successful" });
       router.push("/");
     } catch (error: any) {
+        let errorMessage = "An unknown error occurred.";
+        if (error.code) {
+            switch(error.code) {
+                case 'auth/user-not-found':
+                    errorMessage = "No user found with this email.";
+                    break;
+                case 'auth/wrong-password':
+                    errorMessage = "Incorrect password. Please try again.";
+                    break;
+                case 'auth/email-not-verified':
+                     errorMessage = "Please verify your email to log in. Check your inbox for a verification link.";
+                     break;
+                default:
+                    errorMessage = error.message;
+            }
+        }
       toast({
         variant: "destructive",
         title: "Login Failed",
-        description: error.message,
+        description: errorMessage,
       });
     } finally {
       setIsLoading(false);
@@ -79,13 +95,11 @@ export default function LoginPage() {
         provider === "google" ? handleGoogleSignIn : handleMicrosoftSignIn;
       const user = await signInMethod();
 
-      // Only proceed if the user object is returned (i.e., popup wasn't closed)
       if (user) {
         toast({ title: "Login Successful" });
         router.push("/");
       }
     } catch (error: any) {
-      // Avoid showing a toast for user-closed popups as it's handled silently in auth.ts
       if (error.code !== "auth/popup-closed-by-user") {
         toast({
           variant: "destructive",
@@ -100,7 +114,7 @@ export default function LoginPage() {
   }
 
   return (
-    <Card className="w-full max-w-md shadow-lg">
+    <Card className="w-full max-w-md shadow-lg rounded-xl">
       <CardHeader className="space-y-1 text-center">
         <CardTitle className="text-3xl font-bold font-headline">
           Welcome Back
@@ -150,7 +164,7 @@ export default function LoginPage() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full rounded-xl" disabled={isLoading}>
               {isLoading ? <Loader2 className="animate-spin" /> : "Login"}
             </Button>
             <div className="relative">
@@ -166,6 +180,7 @@ export default function LoginPage() {
             <div className="grid grid-cols-2 gap-4">
               <Button
                 variant="outline"
+                className="rounded-xl"
                 onClick={() => handleProviderSignIn("google")}
                 disabled={!!isProviderLoading}
               >
@@ -178,6 +193,7 @@ export default function LoginPage() {
               </Button>
               <Button
                 variant="outline"
+                className="rounded-xl"
                 onClick={() => handleProviderSignIn("microsoft")}
                 disabled={!!isProviderLoading}
               >

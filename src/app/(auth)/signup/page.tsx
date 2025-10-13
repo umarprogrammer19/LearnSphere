@@ -94,15 +94,12 @@ export default function SignupPage() {
       const user = await handleEmailSignUp(values.email, values.password, userData);
 
       toast({
-        title: "Account Created",
-        description: "A verification email has been sent. Please check your inbox.",
+        title: "Account Created!",
+        description: "A verification email has been sent. Please check your inbox to continue.",
       });
 
-      if (user.phoneNumber) {
-        router.push(`/verify-otp?phone=${encodeURIComponent(user.phoneNumber)}`);
-      } else {
-        router.push("/");
-      }
+      // Redirect to login page where they will be prompted to verify
+      router.push(`/login`);
 
     } catch (error: any) {
        let friendlyMessage = "An unknown error occurred.";
@@ -135,7 +132,7 @@ export default function SignupPage() {
   }
 
   return (
-    <Card className="w-full max-w-2xl shadow-lg">
+    <Card className="w-full max-w-2xl shadow-lg rounded-xl">
       <CardHeader className="text-center">
         <CardTitle className="text-3xl font-bold font-headline">
           Create an Account
@@ -255,7 +252,7 @@ export default function SignupPage() {
                           <Button
                             variant={"outline"}
                             className={cn(
-                              "w-full justify-start text-left font-normal",
+                              "w-full justify-start text-left font-normal rounded-xl",
                               !field.value && "text-muted-foreground"
                             )}
                             disabled={isLoading}
@@ -319,7 +316,7 @@ export default function SignupPage() {
                     disabled={isLoading}
                   >
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className="rounded-xl">
                         <SelectValue placeholder="Select your country" />
                       </SelectTrigger>
                     </FormControl>
@@ -335,7 +332,7 @@ export default function SignupPage() {
               )}
             />
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full rounded-xl" disabled={isLoading}>
               {isLoading ? (
                 <Loader2 className="animate-spin" />
               ) : (

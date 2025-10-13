@@ -15,6 +15,7 @@ import {
   signInWithPhoneNumber,
   ConfirmationResult,
   User,
+  Auth,
 } from "firebase/auth";
 import {
   getFirestore,
@@ -25,6 +26,9 @@ import {
 import { initializeFirebase } from "@/firebase";
 
 const { auth, firestore } = initializeFirebase();
+
+// Set auth domain to fix popup issue
+auth.tenantId = auth.tenantId || null;
 
 // User data structure
 interface UserData {
@@ -64,13 +68,13 @@ const createUserProfile = async (user: User, additionalData: Partial<UserData> =
     isEmailVerified: user.emailVerified,
     isPhoneVerified: !!user.phoneNumber,
     tutorVerificationStatus: "pending",
+    isProfileCompleted: false, // New field
     
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     lastActiveAt: serverTimestamp(),
   };
 
-  // Use merge: true to avoid overwriting existing data on login
   await setDoc(userRef, data, { merge: true });
 };
 
@@ -92,12 +96,16 @@ export const handleEmailSignUp = async (
 };
 
 export const handleEmailSignIn = async (email: string, password: string) => {
-  const userCredential = await signInWithEmailAndPassword(
-    auth,
-    email,
-    password
-  );
+  const userCredential = await signInWithEmailAndPassword(auth, email, password);
   const user = userCredential.user;
+
+  if (!user.emailVerified) {
+    await signOut(auth); // Sign out user
+    const error: any = new Error("Email not verified");
+    error.code = "auth/email-not-verified";
+    throw error;
+  }
+
   const userRef = doc(firestore, `users/${user.uid}`);
   await setDoc(
     userRef,
@@ -110,14 +118,15 @@ export const handleEmailSignIn = async (email: string, password: string) => {
   return user;
 };
 
+
 // --- Social Logins ---
-const handleSocialSignIn = async (provider: "google" | "microsoft") => {
-    const authProvider = provider === 'google' 
+const handleSocialSignIn = async (providerName: "google" | "microsoft") => {
+    const provider = providerName === 'google' 
         ? new GoogleAuthProvider() 
         : new OAuthProvider("microsoft.com");
   
     try {
-        const userCredential = await signInWithPopup(auth, authProvider);
+        const userCredential = await signInWithPopup(auth, provider);
         const user = userCredential.user;
         
         const [firstName, ...lastNameParts] = (user.displayName || "").split(" ");
@@ -128,12 +137,9 @@ const handleSocialSignIn = async (provider: "google" | "microsoft") => {
     } catch (error: any) {
         if (error.code === 'auth/popup-closed-by-user') {
             console.warn('Authentication popup was closed by the user.');
-            // This is a user action, not necessarily an app error. 
-            // We can choose to return null or re-throw a more specific error.
             return null;
         }
-        // For other errors, we log and re-throw to be handled by the caller.
-        console.error(`Error during ${provider} sign-in:`, error);
+        console.error(`Error during ${providerName} sign-in:`, error);
         throw error;
     }
 };
@@ -149,14 +155,11 @@ export const handleMicrosoftSignIn = () => {
 // --- Phone Auth (OTP) ---
 export const getRecaptchaVerifier = (containerId: string) => {
   if (window.recaptchaVerifier) {
-    // To avoid creating multiple verifiers
     return window.recaptchaVerifier;
   }
   window.recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
     size: "invisible",
-    callback: (response: any) => {
-      // reCAPTCHA solved, allow signInWithPhoneNumber.
-    },
+    callback: (response: any) => {},
   });
   return window.recaptchaVerifier;
 };

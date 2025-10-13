@@ -11,7 +11,7 @@ const { firestore } = initializeFirebase();
 interface UserData extends DocumentData {
   firstName: string;
   lastName: string;
-  // Add other fields from your user schema
+  isProfileCompleted: boolean;
 }
 
 export const useUser = () => {
