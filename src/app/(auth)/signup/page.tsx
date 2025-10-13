@@ -91,7 +91,7 @@ export default function SignupPage() {
         city: values.city,
       };
 
-      const user = await handleEmailSignUp(values.email, values.password, userData);
+      await handleEmailSignUp(values.email, values.password, userData);
 
       toast({
         title: "Account Created!",
