@@ -164,7 +164,9 @@ export default function ProfilePage() {
           dateOfBirth: format(values.dateOfBirth, "yyyy-MM-dd"),
           profileImageUrl: imageUrl,
           isProfileCompleted: true,
-          currentLocation: currentLocation ? {latitude: currentLocation.latitude, longitude: currentLocation.longitude} : userData?.currentLocation || { latitude: "", longitude: "" },
+          currentLocation: currentLocation 
+            ? {latitude: currentLocation.latitude, longitude: currentLocation.longitude} 
+            : userData?.currentLocation || { latitude: "", longitude: "" },
           updatedAt: serverTimestamp(),
         },
         { merge: true }
@@ -455,7 +457,7 @@ export default function ProfilePage() {
                                     <FormControl>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select your class" />
-                                        </SelectTrigger>
+                                        </Trigger>
                                     </FormControl>
                                     <SelectContent>
                                         {[...Array(12)].map((_, i) => (

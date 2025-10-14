@@ -86,7 +86,7 @@ const createUserProfile = async (user: User, additionalData: Partial<UserData> =
     schoolName: "",
     availableSlots: [],
     locationType: "",
-    currentLocation: { latitude: "", longitude: "" }, // Changed from 'location' to 'currentLocation'
+    currentLocation: { latitude: "", longitude: "" }, 
     CNIC: "",
     degreeScreenshots: [],
     
@@ -177,8 +177,7 @@ export const handleMicrosoftSignIn = () => handleSocialSignIn("microsoft");
 // --- Phone Auth (OTP) ---
 export const getRecaptchaVerifier = (containerId: string) => {
   if (window.recaptchaVerifier) {
-    // To avoid re-rendering issues, we can clear the previous instance
-    // window.recaptchaVerifier.clear();
+    window.recaptchaVerifier.clear();
   }
   window.recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
     size: "invisible",
