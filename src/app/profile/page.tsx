@@ -1,13 +1,11 @@
 
 "use client";
 
-import { useUser } from "@/hooks/use-user";
-import { useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { Footer } from "@/components/footer";
+import { Header } from "@/components/header";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Card,
   CardContent,
@@ -15,8 +13,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Form,
   FormControl,
@@ -25,6 +21,12 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -32,27 +34,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
-import { CalendarIcon, Loader2, MapPin } from "lucide-react";
-import { format, parse } from "date-fns";
-import { useToast } from "@/hooks/use-toast";
-import { getFirestore, doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { Textarea } from "@/components/ui/textarea";
 import { initializeFirebase } from "@/firebase";
-import { Footer } from "@/components/footer";
-import { Header } from "@/components/header";
-import Image from "next/image";
+import { storage } from "@/firebase/config";
+import { useToast } from "@/hooks/use-toast";
+import { useUser } from "@/hooks/use-user";
+import { cn } from "@/lib/utils";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { format, parse } from "date-fns";
+import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { CalendarIcon, Loader2, MapPin } from "lucide-react";
 import Link from "next/link";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useRouter } from "next/navigation";
+import React, { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
 
 
-const { firestore, storage } = initializeFirebase();
+const { firestore } = initializeFirebase();
 
 const profileFormSchema = z.object({
   firstName: z.string().min(1, "First name is required."),
@@ -75,7 +75,7 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
-  const [currentLocation, setCurrentLocation] = useState<{latitude: number, longitude: number} | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<{ latitude: number, longitude: number } | null>(null);
   const [isLocationLoading, setIsLocationLoading] = useState(false);
 
   const profileForm = useForm<z.infer<typeof profileFormSchema>>({
@@ -106,7 +106,7 @@ export default function ProfilePage() {
           ? parse(userData.dateOfBirth, "yyyy-MM-dd", new Date())
           : new Date(),
       });
-      if(userData.currentLocation && userData.currentLocation.latitude) {
+      if (userData.currentLocation && userData.currentLocation.latitude) {
         setCurrentLocation(userData.currentLocation);
       }
     }
@@ -117,7 +117,7 @@ export default function ProfilePage() {
   ) => {
     if (e.target.files && e.target.files[0]) {
       setProfileImageFile(e.target.files[0]);
-       const reader = new FileReader();
+      const reader = new FileReader();
       reader.onload = (event) => {
         profileForm.setValue('profileImageUrl', event.target?.result as string)
       };
@@ -127,7 +127,7 @@ export default function ProfilePage() {
 
   const handleGetCurrentLocation = () => {
     setIsLocationLoading(true);
-    if(navigator.geolocation) {
+    if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition((position) => {
         const { latitude, longitude } = position.coords;
         setCurrentLocation({ latitude, longitude });
@@ -144,13 +144,13 @@ export default function ProfilePage() {
   };
 
 
-  const handleProfileSubmit = async (
-    values: z.infer<typeof profileFormSchema>
-  ) => {
+  const handleProfileSubmit = async (values: z.infer<typeof profileFormSchema>) => {
     if (!user) return;
+
     setIsSubmitting(true);
     try {
       let imageUrl = userData?.profileImageUrl || "";
+
       if (profileImageFile) {
         const storageRef = ref(storage, `profile-images/${user.uid}`);
         await uploadBytes(storageRef, profileImageFile);
@@ -165,8 +165,11 @@ export default function ProfilePage() {
           dateOfBirth: format(values.dateOfBirth, "yyyy-MM-dd"),
           profileImageUrl: imageUrl,
           isProfileCompleted: true,
-          currentLocation: currentLocation 
-            ? {latitude: currentLocation.latitude, longitude: currentLocation.longitude} 
+          currentLocation: currentLocation
+            ? {
+              latitude: currentLocation.latitude,
+              longitude: currentLocation.longitude,
+            }
             : userData?.currentLocation || { latitude: "", longitude: "" },
           updatedAt: serverTimestamp(),
         },
@@ -222,35 +225,35 @@ export default function ProfilePage() {
                 onSubmit={profileForm.handleSubmit(handleProfileSubmit)}
                 className="space-y-8"
               >
-                  <div className="flex justify-center">
-                     <FormField
-                        control={profileForm.control}
-                        name="profileImageUrl"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormControl>
-                                <>
-                                <label htmlFor="profile-image-upload" className="cursor-pointer">
-                                <Avatar className="w-32 h-32 border-4 border-white shadow-lg">
-                                    <AvatarImage src={field.value || ""} alt="Profile" />
-                                    <AvatarFallback className="text-4xl">
-                                        {getInitials(userData?.firstName, userData?.lastName)}
-                                    </AvatarFallback>
-                                </Avatar>
-                                </label>
-                                <Input 
-                                id="profile-image-upload" 
-                                type="file" 
-                                accept="image/*" 
-                                className="hidden" 
-                                onChange={handleProfileImageChange} 
-                                />
-                                </>
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+                <div className="flex justify-center">
+                  <FormField
+                    control={profileForm.control}
+                    name="profileImageUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <>
+                            <label htmlFor="profile-image-upload" className="cursor-pointer">
+                              <Avatar className="w-32 h-32 border-4 border-white shadow-lg">
+                                <AvatarImage src={field.value || ""} alt="Profile" />
+                                <AvatarFallback className="text-4xl">
+                                  {getInitials(userData?.firstName, userData?.lastName)}
+                                </AvatarFallback>
+                              </Avatar>
+                            </label>
+                            <Input
+                              id="profile-image-upload"
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={handleProfileImageChange}
+                            />
+                          </>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
@@ -369,7 +372,7 @@ export default function ProfilePage() {
                     )}
                   />
                 </div>
-                 <FormField
+                <FormField
                   control={profileForm.control}
                   name="country"
                   render={({ field }) => (
@@ -392,7 +395,7 @@ export default function ProfilePage() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={profileForm.control}
                   name="about"
@@ -412,81 +415,81 @@ export default function ProfilePage() {
                 />
 
                 <FormField
-                    control={profileForm.control}
-                    name="schoolName"
-                    render={({field}) => (
-                        <FormItem>
-                            <FormLabel>School Name</FormLabel>
-                            <FormControl><Input placeholder="Your school name" {...field}/></FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
+                  control={profileForm.control}
+                  name="schoolName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>School Name</FormLabel>
+                      <FormControl><Input placeholder="Your school name" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField
-                        control={profileForm.control}
-                        name="board"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Board</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select your board" />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="BSEK">BSEK (Karachi)</SelectItem>
-                                        <SelectItem value="FBISE">FBISE (Federal)</SelectItem>
-                                        <SelectItem value="BISE_LHR">BISE (Lahore)</SelectItem>
-                                        <SelectItem value="BISE_RWP">BISE (Rawalpindi)</SelectItem>
-                                        <SelectItem value="AKU_EB">AKU-EB</SelectItem>
-                                        <SelectItem value="CAMBRIDGE">Cambridge</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={profileForm.control}
-                        name="classGrade"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Class/Grade</FormLabel>
-                                 <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select your class" />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        {[...Array(12)].map((_, i) => (
-                                            <SelectItem key={i+1} value={`${i+1}`}>{`${i+1}`}</SelectItem>
-                                        ))}
-                                         <SelectItem value="a_level">A-Level</SelectItem>
-                                         <SelectItem value="o_level">O-Level</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField
+                    control={profileForm.control}
+                    name="board"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Board</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select your board" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="BSEK">BSEK (Karachi)</SelectItem>
+                            <SelectItem value="FBISE">FBISE (Federal)</SelectItem>
+                            <SelectItem value="BISE_LHR">BISE (Lahore)</SelectItem>
+                            <SelectItem value="BISE_RWP">BISE (Rawalpindi)</SelectItem>
+                            <SelectItem value="AKU_EB">AKU-EB</SelectItem>
+                            <SelectItem value="CAMBRIDGE">Cambridge</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={profileForm.control}
+                    name="classGrade"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Class/Grade</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select your class" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {[...Array(12)].map((_, i) => (
+                              <SelectItem key={i + 1} value={`${i + 1}`}>{`${i + 1}`}</SelectItem>
+                            ))}
+                            <SelectItem value="a_level">A-Level</SelectItem>
+                            <SelectItem value="o_level">O-Level</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
-                
-                 <div className="space-y-2">
-                    <FormLabel>Current Location</FormLabel>
-                    <div className="flex items-center gap-4">
-                        <Button type="button" variant="outline" onClick={handleGetCurrentLocation} disabled={isLocationLoading}>
-                            {isLocationLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <MapPin className="mr-2 h-4 w-4"/>}
-                            Get My Current Location
-                        </Button>
-                        {currentLocation && (
-                            <p className="text-sm text-muted-foreground">
-                                Lat: {currentLocation.latitude.toFixed(4)}, Lng: {currentLocation.longitude.toFixed(4)}
-                            </p>
-                        )}
-                    </div>
+
+                <div className="space-y-2">
+                  <FormLabel>Current Location</FormLabel>
+                  <div className="flex items-center gap-4">
+                    <Button type="button" variant="outline" onClick={handleGetCurrentLocation} disabled={isLocationLoading}>
+                      {isLocationLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
+                      Get My Current Location
+                    </Button>
+                    {currentLocation && (
+                      <p className="text-sm text-muted-foreground">
+                        Lat: {currentLocation.latitude.toFixed(4)}, Lng: {currentLocation.longitude.toFixed(4)}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <Button type="submit" disabled={isSubmitting}>
@@ -503,19 +506,19 @@ export default function ProfilePage() {
 
             {userData?.role !== 'teacher' && (
               <div className="text-center">
-                 <Button asChild>
-                    <Link href="/become-tutor">Apply to Become a Tutor</Link>
-                 </Button>
+                <Button asChild>
+                  <Link href="/become-tutor">Apply to Become a Tutor</Link>
+                </Button>
               </div>
             )}
             {
-                userData?.role === 'teacher' && (
-                    <div className="text-center p-4 border-dashed border-2 rounded-lg">
-                        <h3 className="text-lg font-semibold">You are a Tutor!</h3>
-                        <p className="text-muted-foreground">Your application to become a tutor has been submitted.</p>
-                        <p className="text-muted-foreground">Status: <span className="font-bold">{userData.tutorVerificationStatus}</span></p>
-                    </div>
-                )
+              userData?.role === 'teacher' && (
+                <div className="text-center p-4 border-dashed border-2 rounded-lg">
+                  <h3 className="text-lg font-semibold">You are a Tutor!</h3>
+                  <p className="text-muted-foreground">Your application to become a tutor has been submitted.</p>
+                  <p className="text-muted-foreground">Status: <span className="font-bold">{userData.tutorVerificationStatus}</span></p>
+                </div>
+              )
             }
 
           </CardContent>
@@ -526,4 +529,3 @@ export default function ProfilePage() {
   );
 }
 
-    
