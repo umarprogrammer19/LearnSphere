@@ -34,7 +34,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getFirestore, doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { storage } from "@/firebase/config";
 import { initializeFirebase } from "@/firebase";
 import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
@@ -53,7 +54,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
-const { firestore, storage } = initializeFirebase();
+const { firestore } = initializeFirebase();
 
 const timeSlots = Array.from({ length: 24 }, (_, i) => {
     const hour = i.toString().padStart(2, '0');
@@ -66,7 +67,7 @@ const availableSlotsSchema = z.array(z.object({
         startTime: z.string(),
         endTime: z.string(),
     }))
-}));
+})).min(1, "Please select at least one available time slot.");
 
 const tutorFormSchema = z.object({
   qualification: z.string().min(1, "Qualification is required."),
@@ -128,12 +129,6 @@ export default function BecomeTutorPage() {
       router.push("/profile");
     }
   }, [user, userData, isUserLoading, router, toast]);
-
-  useEffect(() => {
-      if(userData?.availableSlots && userData.availableSlots.length > 0) {
-          replace(userData.availableSlots);
-      }
-  }, [userData, replace]);
   
   const handleDegreeFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDegreeFiles(e.target.files);
@@ -149,7 +144,7 @@ export default function BecomeTutorPage() {
     values: z.infer<typeof tutorFormSchema>
   ) => {
     if (!user) return;
-    if (!userData?.isPhoneVerified) {
+    if (userData && !userData.isPhoneVerified) {
       handlePhoneVerification();
       return;
     }
@@ -176,7 +171,7 @@ export default function BecomeTutorPage() {
           role: "teacher",
           degreeScreenshots: degreeUrls,
           tutorVerificationStatus: "pending",
-          currentLocation: currentLocation ? {latitude: currentLocation.latitude, longitude: currentLocation.longitude} : { latitude: "", longitude: "" },
+          currentLocation: currentLocation ? {latitude: currentLocation.latitude, longitude: currentLocation.longitude} : userData?.currentLocation || { latitude: "", longitude: "" },
           updatedAt: serverTimestamp(),
         },
         { merge: true }
@@ -379,7 +374,7 @@ export default function BecomeTutorPage() {
                   {fields.map((item, dayIndex) => (
                     <div key={item.id} className="p-4 border rounded-lg">
                       <h3 className="font-semibold">{item.day}</h3>
-                      <div className="grid grid-cols-4 gap-2 mt-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 mt-2">
                         {timeSlots.map((slot, slotIndex) => {
                           const nextSlot = timeSlots[slotIndex + 1] || "00:00";
                           const timeRange = `${slot} - ${nextSlot}`;
@@ -397,8 +392,9 @@ export default function BecomeTutorPage() {
                                     : currentSlots.filter(s => s.startTime !== slot);
                                   
                                   const allDays = tutorForm.getValues('availableSlots');
-                                  allDays[dayIndex].slots = newSlots;
-                                  tutorForm.setValue('availableSlots', allDays, { shouldValidate: true });
+                                  allDays[dayIndex].slots = newSlots.sort((a, b) => a.startTime.localeCompare(b.startTime));
+                                  
+                                  tutorForm.setValue('availableSlots', allDays, { shouldValidate: true, shouldDirty: true });
                                 }}
                               />
                               <label htmlFor={`${item.day}-${slot}`} className="text-sm">
@@ -410,7 +406,7 @@ export default function BecomeTutorPage() {
                       </div>
                     </div>
                   ))}
-                   <FormMessage>{tutorForm.formState.errors.availableSlots?.message}</FormMessage>
+                   <FormMessage>{tutorForm.formState.errors.availableSlots?.root?.message}</FormMessage>
                 </div>
 
 
@@ -462,3 +458,5 @@ export default function BecomeTutorPage() {
     </>
   );
 }
+
+    
