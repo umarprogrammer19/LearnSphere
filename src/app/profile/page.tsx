@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useUser } from "@/hooks/use-user";
@@ -457,7 +458,7 @@ export default function ProfilePage() {
                                     <FormControl>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select your class" />
-                                        </Trigger>
+                                        </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
                                         {[...Array(12)].map((_, i) => (
@@ -524,3 +525,5 @@ export default function ProfilePage() {
     </>
   );
 }
+
+    
