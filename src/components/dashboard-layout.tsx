@@ -36,14 +36,14 @@ import { cn } from "@/lib/utils";
 import { Logo } from "./logo";
 
 const navItems = [
-    { label: "Dashboard", href: "/dashboard", icon: Home },
-    { label: "Find a Tutor", href: "/find-tutor", icon: Search },
-    { label: "Inbox", href: "/inbox", icon: Mail },
-    { label: "Bookings", href: "/bookings", icon: LineChart },
+  { label: "Dashboard", href: "/dashboard", icon: Home },
+  { label: "Find a Tutor", href: "/find-tutor", icon: Search },
+  { label: "Inbox", href: "/inbox", icon: Mail },
+  { label: "Bookings", href: "/bookings", icon: LineChart },
 ];
 
 const settingsNavItems = [
-    { label: "Account Settings", href: "/settings", icon: Settings },
+  { label: "Account Settings", href: "/settings", icon: Settings },
 ];
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -64,7 +64,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
       <aside className="hidden border-r bg-[--sidebar-background] text-[--sidebar-foreground] md:block">
-        <div className="flex h-full max-h-screen flex-col gap-2">
+        <div className="flex h-full max-h-screen flex-col gap-2 mt-10">
           <div className="flex h-14 items-center px-4 lg:h-[60px] lg:px-6">
             <Link href="/" className="flex items-center gap-2 font-semibold">
               <Logo />
@@ -76,19 +76,19 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               {navItems.map((item) => (
                 <NavItem key={item.href} item={item} />
               ))}
-               <span className="px-3 py-2 mt-4 text-xs font-semibold text-[--sidebar-muted-foreground]">SETTINGS</span>
-               {settingsNavItems.map((item) => (
+              <span className="px-3 py-2 mt-4 text-xs font-semibold text-[--sidebar-muted-foreground]">SETTINGS</span>
+              {settingsNavItems.map((item) => (
                 <NavItem key={item.href} item={item} />
               ))}
-               <button
-                  onClick={onSignOut}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 text-[--sidebar-foreground] transition-all hover:bg-[--sidebar-hover] hover:text-[--sidebar-foreground]"
-                  )}
-                >
-                  <LogOut className="h-4 w-4" />
-                  Log Out
-                </button>
+              <button
+                onClick={onSignOut}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-[--sidebar-foreground] transition-all hover:bg-[--sidebar-hover] hover:text-[--sidebar-foreground]"
+                )}
+              >
+                <LogOut className="h-4 w-4" />
+                Log Out
+              </button>
             </nav>
           </div>
         </div>
@@ -114,15 +114,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 >
                   <Logo />
                 </Link>
-                 <span className="px-3 py-2 text-sm font-semibold text-[--sidebar-muted-foreground]">OVERVIEW</span>
-                 {navItems.map((item) => (
-                    <NavItem key={item.href} item={item} isMobile />
+                <span className="px-3 py-2 text-sm font-semibold text-[--sidebar-muted-foreground]">OVERVIEW</span>
+                {navItems.map((item) => (
+                  <NavItem key={item.href} item={item} isMobile />
                 ))}
-                 <span className="px-3 py-2 mt-4 text-sm font-semibold text-[--sidebar-muted-foreground]">SETTINGS</span>
+                <span className="px-3 py-2 mt-4 text-sm font-semibold text-[--sidebar-muted-foreground]">SETTINGS</span>
                 {settingsNavItems.map((item) => (
-                    <NavItem key={item.href} item={item} isMobile />
+                  <NavItem key={item.href} item={item} isMobile />
                 ))}
-                 <button
+                <button
                   onClick={onSignOut}
                   className={cn(
                     "flex items-center gap-3 rounded-lg px-3 py-2 text-[--sidebar-foreground] transition-all hover:bg-[--sidebar-hover] hover:text-[--sidebar-foreground]",
@@ -137,9 +137,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </Sheet>
 
           <div className="w-full flex-1 flex items-center justify-end gap-4">
-             <Button variant="ghost" size="icon" className="rounded-full">
-                <Bell className="h-5 w-5" />
-                <span className="sr-only">Toggle notifications</span>
+            <Button variant="ghost" size="icon" className="rounded-full">
+              <Bell className="h-5 w-5" />
+              <span className="sr-only">Toggle notifications</span>
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
