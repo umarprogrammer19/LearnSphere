@@ -176,7 +176,7 @@ export default function BecomeTutorPage() {
         },
         { merge: true }
       );
-      toast({ title: "Tutor Application Submitted", description: "Your application is under review. We will get back to you soon." });
+      toast({ title: "✅ Tutor application submitted successfully." });
       router.push('/dashboard');
     } catch (error: any) {
       toast({
