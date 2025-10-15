@@ -1,36 +1,33 @@
 
 "use client";
 
-import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  sendEmailVerification,
-  sendPasswordResetEmail,
-  signInWithPopup,
-  GoogleAuthProvider,
-  OAuthProvider,
-  signOut,
-  onAuthStateChanged as onFirebaseAuthStateChanged,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-  ConfirmationResult,
-  User,
-  updateProfile,
-  linkWithPhoneNumber,
-  PhoneAuthProvider,
-  PhoneAuthCredential,
-} from "firebase/auth";
-import {
-  getFirestore,
-  doc,
-  setDoc,
-  serverTimestamp,
-  getDoc,
-  updateDoc,
-} from "firebase/firestore";
 import { initializeFirebase } from "@/firebase";
 import { toast } from "@/hooks/use-toast";
+import {
+  ConfirmationResult,
+  createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  linkWithCredential,
+  OAuthProvider,
+  onAuthStateChanged as onFirebaseAuthStateChanged,
+  PhoneAuthProvider,
+  RecaptchaVerifier,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  signInWithPhoneNumber,
+  signInWithPopup,
+  signOut,
+  updateProfile,
+  User
+} from "firebase/auth";
+import {
+  doc,
+  getDoc,
+  serverTimestamp,
+  setDoc,
+  updateDoc
+} from "firebase/firestore";
 
 
 const { auth, firestore } = initializeFirebase();
@@ -254,15 +251,14 @@ export const confirmOtp = async (
     code
   );
 
-  const userCredential = await linkWithPhoneNumber(currentUser, credential);
+  const userCredential = await linkWithCredential(currentUser, credential);
   const updatedUser = userCredential.user;
 
   const userRef = doc(firestore, `users/${updatedUser.uid}`);
-  // updateDoc performs a shallow merge. We update only the fields relevant to phone verification and role change.
-  // This preserves all other existing data on the user's document.
+
   await updateDoc(userRef, {
     isPhoneVerified: true,
-    phoneNumber: phoneNumber, // Use the passed-in phone number string
+    phoneNumber: phoneNumber,
     updatedAt: serverTimestamp(),
     role: "teacher",
   } as Partial<FullUserProfile>);
