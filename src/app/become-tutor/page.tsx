@@ -58,6 +58,20 @@ const availableSlotsSchema = z.array(z.object({
     { message: "Please select at least one available time slot." }
 );
 
+const subjects = [
+  "Mathematics",
+  "Physics",
+  "Chemistry",
+  "Biology",
+  "Computer Science",
+  "English",
+  "Urdu",
+  "Pakistan Studies",
+  "Islamic Studies",
+  "Art",
+  "Music"
+];
+
 const tutorFormSchema = z.object({
   qualification: z.string().min(1, "Qualification is required."),
   CNIC: z
@@ -70,7 +84,9 @@ const tutorFormSchema = z.object({
     "online",
     "center",
   ], { required_error: "Preferred location is required."}),
-  availableSlots: availableSlotsSchema
+  availableSlots: availableSlotsSchema,
+  teachingSubjects: z.array(z.string()).min(1, "Please select at least one subject."),
+  hourlyPricing: z.coerce.number().min(0, "Pricing must be a positive number."),
 });
 
 
@@ -91,7 +107,9 @@ export default function BecomeTutorPage() {
     defaultValues: {
       CNIC: "",
       qualification: "",
-      availableSlots: daysOfWeek.map(day => ({ day, slots: [] }))
+      availableSlots: daysOfWeek.map(day => ({ day, slots: [] })),
+      teachingSubjects: [],
+      hourlyPricing: 0,
     },
   });
 
@@ -253,6 +271,54 @@ export default function BecomeTutorPage() {
                           <SelectItem value="other">Other</SelectItem>
                         </SelectContent>
                       </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={tutorForm.control}
+                  name="teachingSubjects"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Teaching Subjects</FormLabel>
+                        <Select onValueChange={(value) => field.onChange([...field.value, value])} >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select subjects you teach" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {subjects.map(subject => (
+                               <SelectItem key={subject} value={subject} disabled={field.value.includes(subject)}>
+                                {subject}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                            {field.value.map((subject, index) => (
+                                <div key={index} className="flex items-center gap-2 bg-muted p-2 rounded-md">
+                                    <span>{subject}</span>
+                                    <button type="button" onClick={() => field.onChange(field.value.filter(s => s !== subject))} className="text-red-500 hover:text-red-700">
+                                        &times;
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={tutorForm.control}
+                  name="hourlyPricing"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Hourly Rate (PKR)</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="e.g., 1000" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

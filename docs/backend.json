@@ -113,6 +113,20 @@
           "type": "string",
           "description": "The time the user was last active.",
           "format": "date-time"
+        },
+        "teachingSubjects": {
+            "type": "array",
+            "description": "Subjects the tutor teaches.",
+            "items": { "type": "string" }
+        },
+        "hourlyPricing": {
+            "type": "number",
+            "description": "The tutor's hourly rate."
+        },
+        "degreeScreenshots": {
+            "type": "array",
+            "description": "URLs to the tutor's degree screenshots.",
+            "items": { "type": "string", "format": "uri" }
         }
       },
       "required": [
