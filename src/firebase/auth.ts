@@ -181,12 +181,11 @@ const handleSocialSignIn = async (providerName: "google" | "microsoft") => {
         await createUserProfile(user);
         return user;
     } catch (error: any) {
-        if (error.code === 'auth/popup-closed-by-user') {
-            console.warn('Authentication popup was closed by the user.');
-            return null;
+        if (error.code !== "auth/popup-closed-by-user") {
+           console.error(`Error during ${providerName} sign-in:`, error);
+           throw error;
         }
-        console.error(`Error during ${providerName} sign-in:`, error);
-        throw error;
+        return null;
     }
 };
 
