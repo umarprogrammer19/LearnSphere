@@ -30,7 +30,6 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { initializeFirebase } from "@/firebase";
-import { useToast } from "@/hooks/use-toast";
 import { toast } from "@/hooks/use-toast";
 
 
@@ -38,7 +37,7 @@ const { auth, firestore } = initializeFirebase();
 
 
 // --- User data types ---
-interface UserData {
+export interface UserData {
   firstName: string;
   lastName: string;
   email: string;
@@ -48,7 +47,7 @@ interface UserData {
   city: string;
 }
 
-interface FullUserProfile extends UserData {
+export interface FullUserProfile extends UserData {
     uid: string;
     role: "student" | "teacher" | "shop_owner" | "rider";
     isEmailVerified: boolean;
@@ -203,9 +202,11 @@ export const handleMicrosoftSignIn = () => handleSocialSignIn("microsoft");
 // --- Phone Auth (OTP) ---
 export const getRecaptchaVerifier = (containerId: string) => {
   if (typeof window === 'undefined') {
+    // This is a placeholder for SSR, though reCAPTCHA only works on the client.
     return new RecaptchaVerifier(auth, containerId, { size: 'invisible' });
   }
 
+  // Ensure old verifier is cleared if it exists, to prevent state conflicts.
   if (window.recaptchaVerifier) {
     window.recaptchaVerifier.clear();
   }
@@ -213,8 +214,10 @@ export const getRecaptchaVerifier = (containerId: string) => {
   const verifier = new RecaptchaVerifier(auth, containerId, {
     size: "invisible",
     callback: (response: any) => {
+      // reCAPTCHA solved, allow signInWithPhoneNumber.
     },
     'expired-callback': () => {
+        // Response expired. Ask user to solve reCAPTCHA again.
         toast({
             title: "reCAPTCHA Expired",
             description: "Please try sending the code again.",
@@ -235,28 +238,38 @@ export const startPhoneSignIn = async (
   return signInWithPhoneNumber(auth, phoneNumber, verifier);
 };
 
+/**
+ * Confirms the OTP and links the phone number to the existing authenticated user.
+ * It then updates the user's profile in Firestore to reflect their new 'teacher' role and verified phone status.
+ * This approach prevents the creation of duplicate user documents.
+ */
 export const confirmOtp = async (
   confirmationResult: ConfirmationResult,
   code: string,
   currentUser: User,
   phoneNumber: string
 ) => {
+  // Create a credential with the verification ID and the code provided by the user.
   const credential = PhoneAuthProvider.credential(
     confirmationResult.verificationId,
     code
   );
 
+  // Link the credential to the currently signed-in user.
   const userCredential = await linkWithPhoneNumber(currentUser, credential);
   const updatedUser = userCredential.user;
 
+  // Now, update the existing user's document in Firestore.
   const userRef = doc(firestore, `users/${updatedUser.uid}`);
   
+  // By using updateDoc with merge:true on an existing document, we only modify the specified fields,
+  // preserving all other user data like `createdAt`, `isProfileCompleted`, etc.
   await updateDoc(userRef, {
     isPhoneVerified: true,
-    phoneNumber: phoneNumber,
+    phoneNumber: phoneNumber, // Use the phone number that was passed in for verification.
     updatedAt: serverTimestamp(),
     role: "teacher",
-  } as Partial<FullUserProfile>);
+  } as Partial<FullUserProfile>, { merge: true });
 
   return updatedUser;
 };
