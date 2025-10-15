@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -59,7 +60,7 @@ const formSchema = z.object({
   password: z
     .string()
     .min(6, { message: "Password must be at least 6 characters." }),
-  phone: z.string().min(1, { message: "Phone number is required." }),
+  phone: z.string().regex(/^\+92\d{10}$/, { message: "Phone number must be in the format +923XXXXXXXXX." }),
   dob: z.date({
     required_error: "Date of birth is required.",
   }),
@@ -238,7 +239,7 @@ export default function SignupPage() {
                   <FormControl>
                     <Input
                       type="tel"
-                      placeholder="+92 300 1234567"
+                      placeholder="+923001234567"
                       {...field}
                       disabled={isLoading}
                     />
