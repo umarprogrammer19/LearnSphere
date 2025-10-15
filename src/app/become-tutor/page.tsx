@@ -35,8 +35,8 @@ import { Loader2, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { storage } from "@/firebase/config";
 import { initializeFirebase } from "@/firebase";
+import { storage } from "@/firebase/config";
 import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
 
@@ -208,27 +208,6 @@ export default function BecomeTutorPage() {
     }
   };
   
-   const handleSlotChange = (e: React.MouseEvent<HTMLButtonElement>, checked: boolean | string, dayIndex: number, slot: string) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      const nextSlot = timeSlots[timeSlots.indexOf(slot) + 1] || "00:00";
-      const currentSlots = tutorForm.getValues(`availableSlots.${dayIndex}.slots`);
-      let newSlots;
-
-      if (checked) {
-          newSlots = [...currentSlots, { startTime: slot, endTime: nextSlot }];
-      } else {
-          newSlots = currentSlots.filter(s => s.startTime !== slot);
-      }
-      
-      const allDays = tutorForm.getValues('availableSlots');
-      allDays[dayIndex].slots = newSlots.sort((a, b) => a.startTime.localeCompare(b.startTime));
-      
-      tutorForm.setValue('availableSlots', allDays, { shouldValidate: true, shouldDirty: true });
-  }
-
-
   if (isUserLoading || !userData) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -370,9 +349,6 @@ export default function BecomeTutorPage() {
                                                   id={`${item.day}-${slot}`}
                                                   checked={isChecked}
                                                   onCheckedChange={(checked) => {
-                                                      // This doesn't receive a mouse event directly, so we can't prevent default here.
-                                                      // The scroll issue is more likely related to how the form state is updated.
-                                                      // We pass the checked state, day index, and slot.
                                                       const currentSlots = tutorForm.getValues(`availableSlots.${dayIndex}.slots`);
                                                       let newSlots;
                                                       const nextSlot = timeSlots[timeSlots.indexOf(slot) + 1] || "00:00";
@@ -420,5 +396,3 @@ export default function BecomeTutorPage() {
     </>
   );
 }
-
-    
