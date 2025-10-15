@@ -38,19 +38,20 @@ export default function VerifyOtpPage() {
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const recaptchaContainerRef = useRef<HTMLDivElement>(null);
+  const sentOtpRef = useRef(false); // Ref to track if OTP has been sent
 
   useEffect(() => {
-    // Only run this effect once on component mount
-    if (!recaptchaContainerRef.current) return;
+    // This effect should only run once to initialize reCAPTCHA and send the initial OTP.
+    if (sentOtpRef.current || !recaptchaContainerRef.current) return;
     
-    // Ensure the verifier is created only once
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = getRecaptchaVerifier("recaptcha-container");
-    }
+    const sendInitialOtp = async () => {
+        sentOtpRef.current = true; // Mark as sent to prevent re-runs
+        
+        if (!window.recaptchaVerifier) {
+            window.recaptchaVerifier = getRecaptchaVerifier("recaptcha-container");
+        }
+        const verifier = window.recaptchaVerifier;
 
-    const verifier = window.recaptchaVerifier;
-
-    const sendOtp = async () => {
         if (!phoneNumber) {
             toast({ variant: "destructive", title: "Error", description: "Phone number not provided." });
             router.push("/signup");
@@ -59,10 +60,12 @@ export default function VerifyOtpPage() {
 
         setIsLoading(true);
         try {
+            await verifier.render();
             const result = await startPhoneSignIn(phoneNumber, verifier);
             setConfirmationResult(result);
             window.confirmationResult = result;
             toast({ title: "OTP Sent", description: `A code has been sent to ${phoneNumber}` });
+            startCooldown();
         } catch (error: any) {
             handleAuthError(error, "Failed to send OTP");
         } finally {
@@ -70,36 +73,29 @@ export default function VerifyOtpPage() {
         }
     };
     
-    // Render the reCAPTCHA verifier and then send OTP
-    verifier.render().then((widgetId: any) => {
-        console.log("reCAPTCHA rendered with widgetId:", widgetId);
-        sendOtp();
-    }).catch((error: any) => {
-        console.error("reCAPTCHA render error:", error);
-        toast({
-            variant: "destructive",
-            title: "reCAPTCHA Error",
-            description: "Could not render reCAPTCHA. Please refresh the page.",
-        });
-        setIsLoading(false);
-    });
+    sendInitialOtp();
 
-  }, []); // Empty dependency array ensures this runs only once.
+  }, [phoneNumber, router, toast]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (cooldown > 0 && isResending) {
+    if (cooldown > 0) {
       timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
-    }
-    if (cooldown === 0) {
-      setIsResending(false);
+    } else {
+        setIsResending(false);
     }
     return () => clearTimeout(timer);
-  }, [cooldown, isResending]);
+  }, [cooldown]);
+
+  const startCooldown = () => {
+    setCooldown(60);
+    setIsResending(true);
+  }
 
   const handleResendOtp = async () => {
-    setIsResending(true);
-    setCooldown(60);
+    if (isResending) return;
+
+    startCooldown();
     setIsLoading(true);
     try {
         const verifier = window.recaptchaVerifier;
@@ -107,15 +103,14 @@ export default function VerifyOtpPage() {
             throw new Error("reCAPTCHA verifier not initialized.");
         }
         // It might be necessary to re-render the verifier if it has expired
-        await verifier.render();
         const result = await startPhoneSignIn(phoneNumber, verifier);
         setConfirmationResult(result);
         window.confirmationResult = result;
         toast({ title: "OTP Resent", description: `A new code has been sent to ${phoneNumber}` });
     } catch (error: any) {
         handleAuthError(error, "Failed to resend OTP");
+        setCooldown(0); // Stop cooldown on error
         setIsResending(false);
-        setCooldown(0);
     } finally {
         setIsLoading(false);
     }
@@ -129,7 +124,10 @@ export default function VerifyOtpPage() {
           friendlyMessage = "An internal authentication error occurred. Please check your Firebase project's configuration."
       } else if (error.message.includes('reCAPTCHA client element has been removed')) {
           friendlyMessage = "reCAPTCHA validation failed. Please refresh the page and try again."
-      } else {
+      } else if (error.code === 'auth/too-many-requests') {
+          friendlyMessage = "Too many requests. Please wait a few minutes before trying again."
+      }
+      else {
           friendlyMessage = error.message;
       }
     toast({
@@ -254,12 +252,12 @@ export default function VerifyOtpPage() {
               value={digit}
               onChange={(e) => handleInputChange(e, index)}
               onKeyDown={(e) => handleKeyDown(e, index)}
-              disabled={isLoading || isResending}
+              disabled={isLoading}
             />
           ))}
         </div>
-        <Button onClick={handleSubmit} className="w-full" disabled={isLoading || isResending}>
-          {isLoading ? <Loader2 className="animate-spin" /> : "Verify"}
+        <Button onClick={handleSubmit} className="w-full" disabled={isLoading}>
+          {isLoading && !isResending ? <Loader2 className="animate-spin" /> : "Verify"}
         </Button>
       </CardContent>
       <CardFooter className="flex flex-col items-center text-center text-sm text-muted-foreground">
@@ -268,7 +266,7 @@ export default function VerifyOtpPage() {
           variant="link"
           className="p-0 h-auto"
           onClick={handleResendOtp}
-          disabled={cooldown > 0 || isResending}
+          disabled={isResending}
         >
           {isResending && cooldown > 0 ? (
             `Resend in ${cooldown}s`
