@@ -262,7 +262,7 @@ export const confirmOtp = async (
   // This preserves all other existing data on the user's document.
   await updateDoc(userRef, {
     isPhoneVerified: true,
-    phoneNumber: phoneNumber,
+    phoneNumber: phoneNumber, // Use the passed-in phone number string
     updatedAt: serverTimestamp(),
     role: "teacher",
   } as Partial<FullUserProfile>);
