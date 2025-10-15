@@ -37,34 +37,54 @@ export default function VerifyOtpPage() {
   const phoneNumber = searchParams.get("phone") || "";
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const recaptchaContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Only run this effect once on component mount
+    if (!recaptchaContainerRef.current) return;
+    
+    // Ensure the verifier is created only once
     if (!window.recaptchaVerifier) {
       window.recaptchaVerifier = getRecaptchaVerifier("recaptcha-container");
     }
-    
+
     const verifier = window.recaptchaVerifier;
 
-    const handleOtpSendOnLoad = async () => {
-        if (phoneNumber) {
-            // Render the reCAPTCHA verifier explicitly.
-            verifier.render().then(async (widgetId: any) => {
-                // Now that reCAPTCHA is rendered, we can safely send the OTP.
-                await handleSendOtp(false);
-            }).catch((error: any) => {
-                console.error("reCAPTCHA render error:", error);
-                toast({
-                    variant: "destructive",
-                    title: "reCAPTCHA Error",
-                    description: "Could not render reCAPTCHA. Please refresh the page.",
-                });
-            });
+    const sendOtp = async () => {
+        if (!phoneNumber) {
+            toast({ variant: "destructive", title: "Error", description: "Phone number not provided." });
+            router.push("/signup");
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            const result = await startPhoneSignIn(phoneNumber, verifier);
+            setConfirmationResult(result);
+            window.confirmationResult = result;
+            toast({ title: "OTP Sent", description: `A code has been sent to ${phoneNumber}` });
+        } catch (error: any) {
+            handleAuthError(error, "Failed to send OTP");
+        } finally {
+            setIsLoading(false);
         }
     };
     
-    handleOtpSendOnLoad();
+    // Render the reCAPTCHA verifier and then send OTP
+    verifier.render().then((widgetId: any) => {
+        console.log("reCAPTCHA rendered with widgetId:", widgetId);
+        sendOtp();
+    }).catch((error: any) => {
+        console.error("reCAPTCHA render error:", error);
+        toast({
+            variant: "destructive",
+            title: "reCAPTCHA Error",
+            description: "Could not render reCAPTCHA. Please refresh the page.",
+        });
+        setIsLoading(false);
+    });
 
-  }, [phoneNumber]);
+  }, []); // Empty dependency array ensures this runs only once.
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -77,58 +97,47 @@ export default function VerifyOtpPage() {
     return () => clearTimeout(timer);
   }, [cooldown, isResending]);
 
-  const handleSendOtp = async (isResend = false) => {
-    if (!phoneNumber) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Phone number not provided.",
-      });
-      router.push("/signup");
-      return;
-    }
-    if (isResend) {
-      setIsResending(true);
-      setCooldown(60);
-    } else {
-      setIsLoading(true);
-    }
-
+  const handleResendOtp = async () => {
+    setIsResending(true);
+    setCooldown(60);
+    setIsLoading(true);
     try {
-      const verifier = window.recaptchaVerifier;
-      if (!verifier) {
-          throw new Error("reCAPTCHA verifier not initialized.");
-      }
-      const result = await startPhoneSignIn(phoneNumber, verifier);
-      setConfirmationResult(result);
-      window.confirmationResult = result;
-
-      toast({ title: "OTP Sent", description: `A code has been sent to ${phoneNumber}` });
+        const verifier = window.recaptchaVerifier;
+        if (!verifier) {
+            throw new Error("reCAPTCHA verifier not initialized.");
+        }
+        // It might be necessary to re-render the verifier if it has expired
+        await verifier.render();
+        const result = await startPhoneSignIn(phoneNumber, verifier);
+        setConfirmationResult(result);
+        window.confirmationResult = result;
+        toast({ title: "OTP Resent", description: `A new code has been sent to ${phoneNumber}` });
     } catch (error: any) {
-        let friendlyMessage = "An unknown error occurred. Please try again.";
-        if(error.code === 'auth/invalid-phone-number'){
-            friendlyMessage = "Invalid phone number format. Please enter a valid +92 number."
-        } else if (error.code === 'auth/internal-error' || error.code === 'auth/invalid-app-credential') {
-            friendlyMessage = "An internal authentication error occurred. Please check your Firebase project's configuration for phone auth and authorized domains."
-        }
-        else {
-            friendlyMessage = error.message;
-        }
-      toast({
-        variant: "destructive",
-        title: "Failed to send OTP",
-        description: friendlyMessage,
-      });
-       if (isResend) {
-        setIsResending(false)
-        setCooldown(0)
-       };
+        handleAuthError(error, "Failed to resend OTP");
+        setIsResending(false);
+        setCooldown(0);
     } finally {
-      if (!isResend) {
         setIsLoading(false);
-      }
     }
   };
+
+  const handleAuthError = (error: any, title: string) => {
+    let friendlyMessage = "An unknown error occurred. Please try again.";
+      if(error.code === 'auth/invalid-phone-number'){
+          friendlyMessage = "Invalid phone number format. Please enter a valid +92 number."
+      } else if (error.code === 'auth/internal-error' || error.code === 'auth/invalid-app-credential') {
+          friendlyMessage = "An internal authentication error occurred. Please check your Firebase project's configuration."
+      } else if (error.message.includes('reCAPTCHA client element has been removed')) {
+          friendlyMessage = "reCAPTCHA validation failed. Please refresh the page and try again."
+      } else {
+          friendlyMessage = error.message;
+      }
+    toast({
+      variant: "destructive",
+      title: title,
+      description: friendlyMessage,
+    });
+  }
   
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -197,14 +206,14 @@ export default function VerifyOtpPage() {
           case "auth/invalid-verification-code":
               friendlyMessage = "The verification code is invalid. Please try again.";
               break;
+          case "auth/code-expired":
+              friendlyMessage = "The verification code has expired. Please request a new one.";
+              break;
           case "auth/missing-verification-code":
               friendlyMessage = "Please enter the 6-digit OTP.";
               break;
           case "auth/too-many-requests":
               friendlyMessage = "Too many requests. Please try again later.";
-              break;
-          case "auth/captcha-check-failed":
-              friendlyMessage = "reCAPTCHA check failed. Please refresh and try again.";
               break;
           default:
             friendlyMessage = error.message;
@@ -231,7 +240,7 @@ export default function VerifyOtpPage() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div id="recaptcha-container" className="flex justify-center my-4"></div>
+        <div id="recaptcha-container" ref={recaptchaContainerRef} className="flex justify-center my-4"></div>
         <div
           className="flex justify-center gap-2"
           onPaste={handlePaste}
@@ -258,7 +267,7 @@ export default function VerifyOtpPage() {
         <Button
           variant="link"
           className="p-0 h-auto"
-          onClick={() => handleSendOtp(true)}
+          onClick={handleResendOtp}
           disabled={cooldown > 0 || isResending}
         >
           {isResending && cooldown > 0 ? (
