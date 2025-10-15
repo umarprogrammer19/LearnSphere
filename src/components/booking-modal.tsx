@@ -91,7 +91,7 @@ export function BookingModal({ tutor, isOpen, setIsOpen }: BookingModalProps) {
             
             if (finalPaymentMethod === 'stripe') {
                 // Redirect to Stripe Checkout
-                const res = await fetch('http://localhost:9002/api/stripe/create-checkout-session', {
+                const res = await fetch('/api/stripe/create-checkout-session', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -101,7 +101,10 @@ export function BookingModal({ tutor, isOpen, setIsOpen }: BookingModalProps) {
                     }),
                 });
 
-                if (!res.ok) throw new Error('Failed to create Stripe session.');
+                if (!res.ok) {
+                    const errorBody = await res.json();
+                    throw new Error(errorBody.error?.message || 'Failed to create Stripe session.');
+                }
                 
                 const { sessionId } = await res.json();
                 const stripe = await stripePromise;
