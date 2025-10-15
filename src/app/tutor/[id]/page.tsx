@@ -1,20 +1,20 @@
 
 "use client";
 
-import { useDoc } from "@/firebase/firestore/use-doc";
-import { doc } from "firebase/firestore";
-import { initializeFirebase } from "@/firebase";
-import { useParams } from "next/navigation";
-import { Loader2, Star, MapPin, GraduationCap, Clock, BookOpen, CheckCircle } from "lucide-react";
-import { Header } from "@/components/header";
+import { BookingModal } from "@/components/booking-modal";
 import { Footer } from "@/components/footer";
+import { Header } from "@/components/header";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useMemo, useState } from 'react';
+import { initializeFirebase } from "@/firebase";
+import { useDoc } from "@/firebase/firestore/use-doc";
 import { useMemoFirebase } from "@/firebase/provider";
-import { BookingModal } from "@/components/booking-modal";
+import { doc } from "firebase/firestore";
+import { BookOpen, CheckCircle, Clock, GraduationCap, Loader2, MapPin, Star } from "lucide-react";
+import { useParams } from "next/navigation";
+import { useState } from 'react';
 
 const { firestore } = initializeFirebase();
 
