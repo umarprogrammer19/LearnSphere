@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
@@ -38,48 +39,54 @@ export default function VerifyOtpPage() {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    let storedResult = null;
-    try {
-      const storedResultString = sessionStorage.getItem('confirmationResult');
-      if (storedResultString) {
-        storedResult = JSON.parse(storedResultString);
-      }
-    } catch (e) {
-        console.error("Could not parse confirmationResult from session storage", e);
+    if (!window.recaptchaVerifier) {
+      getRecaptchaVerifier("recaptcha-container");
     }
 
-
-    if (phoneNumber && !storedResult) {
-      handleSendOtp();
-    } else if (storedResult) {
-        // A bit of a hack to re-constitute the ConfirmationResult object
-        const reconstitutedResult: ConfirmationResult = {
-            ...storedResult,
-            confirm: (verificationCode: string) => {
-                // The actual confirm method is not available on the client-reconstituted object
-                // We will rely on the global window.confirmationResult which should be the real deal
-                if(window.confirmationResult) {
-                    return window.confirmationResult.confirm(verificationCode);
-                }
-                return Promise.reject(new Error("Confirmation result not fully available. Please resend OTP."));
-            }
-        };
-        setConfirmationResult(reconstitutedResult);
-        // Also ensure the global one is set if it exists
-        if(window.confirmationResult) {
-            setConfirmationResult(window.confirmationResult);
+    const handleOtpSendOnLoad = async () => {
+      let storedResult = null;
+      try {
+        const storedResultString = sessionStorage.getItem('confirmationResult');
+        if (storedResultString) {
+          storedResult = JSON.parse(storedResultString);
         }
-    }
+      } catch (e) {
+          console.error("Could not parse confirmationResult from session storage", e);
+      }
+
+      if (phoneNumber && !storedResult) {
+        await handleSendOtp();
+      } else if (storedResult) {
+          const reconstitutedResult: ConfirmationResult = {
+              ...storedResult,
+              confirm: (verificationCode: string) => {
+                  if(window.confirmationResult) {
+                      return window.confirmationResult.confirm(verificationCode);
+                  }
+                  return Promise.reject(new Error("Confirmation result not fully available. Please resend OTP."));
+              }
+          };
+          setConfirmationResult(reconstitutedResult);
+          if(window.confirmationResult) {
+              setConfirmationResult(window.confirmationResult);
+          }
+      }
+    };
+    
+    handleOtpSendOnLoad();
+
   }, [phoneNumber]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (cooldown > 0) {
+    if (cooldown > 0 && isResending) {
       timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
     }
-     if(cooldown === 0) setIsResending(false)
+    if (cooldown === 0) {
+      setIsResending(false);
+    }
     return () => clearTimeout(timer);
-  }, [cooldown]);
+  }, [cooldown, isResending]);
 
   const handleSendOtp = async (isResend = false) => {
     if (!phoneNumber) {
@@ -100,9 +107,11 @@ export default function VerifyOtpPage() {
 
     try {
       const verifier = getRecaptchaVerifier("recaptcha-container");
+      // Render the verifier to ensure it's ready
+      await verifier.render();
       const result = await startPhoneSignIn(phoneNumber, verifier);
       setConfirmationResult(result);
-      window.confirmationResult = result; // Store globally for access
+      window.confirmationResult = result;
        try {
         sessionStorage.setItem('confirmationResult', JSON.stringify(result));
       } catch (e) {
@@ -114,7 +123,10 @@ export default function VerifyOtpPage() {
         let friendlyMessage = "An unknown error occurred.";
         if(error.code === 'auth/invalid-phone-number'){
             friendlyMessage = "Invalid phone number format. Please enter a valid +92 number."
-        } else {
+        } else if (error.code === 'auth/internal-error') {
+            friendlyMessage = "An internal error occurred. Please ensure your Firebase project is configured for phone auth."
+        }
+        else {
             friendlyMessage = error.message;
         }
       toast({
@@ -122,7 +134,10 @@ export default function VerifyOtpPage() {
         title: "Failed to send OTP",
         description: friendlyMessage,
       });
-       if (isResend) setIsResending(false);
+       if (isResend) {
+        setIsResending(false)
+        setCooldown(0)
+       };
     } finally {
       if (!isResend) {
         setIsLoading(false);
@@ -176,7 +191,6 @@ export default function VerifyOtpPage() {
       return;
     }
     
-    // Prioritize the globally stored, full ConfirmationResult object
     const activeConfirmationResult = window.confirmationResult || confirmationResult;
 
     if (!activeConfirmationResult) {
@@ -191,7 +205,7 @@ export default function VerifyOtpPage() {
     try {
       await confirmOtp(activeConfirmationResult, code);
       toast({ title: "Phone Verified", description: "Your phone number has been successfully verified." });
-      router.push("/dashboard"); // Redirect to dashboard on success
+      router.push("/dashboard"); 
     } catch (error: any) {
       let friendlyMessage = "An unknown error occurred.";
       switch (error.code) {
@@ -232,6 +246,7 @@ export default function VerifyOtpPage() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        <div id="recaptcha-container" className="flex justify-center my-4"></div>
         <div
           className="flex justify-center gap-2"
           onPaste={handlePaste}
@@ -252,7 +267,6 @@ export default function VerifyOtpPage() {
         <Button onClick={handleSubmit} className="w-full" disabled={isLoading || isResending}>
           {isLoading ? <Loader2 className="animate-spin" /> : "Verify"}
         </Button>
-        <div id="recaptcha-container" className="flex justify-center"></div>
       </CardContent>
       <CardFooter className="flex flex-col items-center text-center text-sm text-muted-foreground">
         <span>Didn&apos;t receive a code?</span>
@@ -281,3 +295,5 @@ declare global {
     confirmationResult?: ConfirmationResult;
   }
 }
+
+    
