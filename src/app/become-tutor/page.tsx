@@ -39,6 +39,7 @@ import { initializeFirebase } from "@/firebase";
 import { storage } from "@/firebase/config";
 import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
+import { GoogleMap } from "@/components/google-map";
 
 const { firestore } = initializeFirebase();
 
@@ -87,6 +88,10 @@ const tutorFormSchema = z.object({
   availableSlots: availableSlotsSchema,
   teachingSubjects: z.array(z.string()).min(1, "Please select at least one subject."),
   hourlyPricing: z.coerce.number().min(0, "Pricing must be a positive number."),
+  location: z.object({
+    lat: z.number(),
+    lng: z.number(),
+  }).optional(),
 });
 
 
@@ -96,8 +101,9 @@ export default function BecomeTutorPage() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [degreeFiles, setDegreeFiles] = useState<FileList | null>(null);
-  const [currentLocation, setCurrentLocation] = useState<{latitude: number, longitude: number} | null>(null);
   const [isLocationLoading, setIsLocationLoading] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | undefined>(undefined);
+
 
   const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -110,8 +116,19 @@ export default function BecomeTutorPage() {
       availableSlots: daysOfWeek.map(day => ({ day, slots: [] })),
       teachingSubjects: [],
       hourlyPricing: 0,
+      location: userData?.location ? { lat: userData.location.latitude, lng: userData.location.longitude } : undefined,
     },
   });
+  
+  useEffect(() => {
+    if (userData?.location?.latitude) {
+      const loc = { lat: userData.location.latitude, lng: userData.location.longitude };
+      setCurrentLocation(loc);
+      tutorForm.setValue("location", loc);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userData]);
+
 
   const { fields } = useFieldArray({
       control: tutorForm.control,
@@ -166,6 +183,11 @@ export default function BecomeTutorPage() {
       return;
     }
 
+    if (!degreeFiles || degreeFiles.length === 0) {
+        toast({ variant: "destructive", title: "Missing Documents", description: "Please upload your degree screenshots." });
+        return;
+    }
+
 
     setIsSubmitting(true);
     try {
@@ -182,18 +204,19 @@ export default function BecomeTutorPage() {
       }
 
       const userRef = doc(firestore, "users", user.uid);
-      await setDoc(
-        userRef,
-        {
-          ...values,
-          role: "teacher",
-          degreeScreenshots: degreeUrls,
-          tutorVerificationStatus: "pending",
-          currentLocation: currentLocation ? {latitude: currentLocation.latitude, longitude: currentLocation.longitude} : userData?.currentLocation || null,
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
+
+      const dataToSave = {
+        ...values,
+        role: "teacher",
+        degreeScreenshots: degreeUrls,
+        tutorVerificationStatus: "pending",
+        location: values.location ? { latitude: values.location.lat, longitude: values.location.lng } : null,
+        updatedAt: serverTimestamp(),
+      };
+
+
+      await setDoc(userRef, dataToSave, { merge: true });
+
       toast({ title: "✅ Tutor application submitted successfully." });
       router.push('/dashboard');
     } catch (error: any) {
@@ -213,7 +236,9 @@ export default function BecomeTutorPage() {
     if(navigator.geolocation) {
       navigator.geolocation.getCurrentPosition((position) => {
         const { latitude, longitude } = position.coords;
-        setCurrentLocation({ latitude, longitude });
+        const newLocation = { lat: latitude, lng: longitude };
+        setCurrentLocation(newLocation);
+        tutorForm.setValue("location", newLocation, { shouldValidate: true });
         setIsLocationLoading(false);
         toast({ title: "Location captured successfully!" });
       }, (error) => {
@@ -224,6 +249,11 @@ export default function BecomeTutorPage() {
       toast({ variant: "destructive", title: "Geolocation not supported", description: "Your browser does not support geolocation." });
       setIsLocationLoading(false);
     }
+  };
+
+  const handleMapLocationChange = (location: { lat: number; lng: number }) => {
+    setCurrentLocation(location);
+    tutorForm.setValue("location", location, { shouldValidate: true });
   };
   
   if (isUserLoading || !userData) {
@@ -372,26 +402,34 @@ export default function BecomeTutorPage() {
                     <Input
                       type="file"
                       multiple
+                      accept="image/*,.pdf"
                       onChange={handleDegreeFilesChange}
-                      required
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
 
-                 <div className="space-y-2">
-                    <FormLabel>Current Location</FormLabel>
+                <div className="space-y-4">
+                    <FormLabel>Your Location (for in-person tutoring)</FormLabel>
                     <div className="flex items-center gap-4">
                         <Button type="button" variant="outline" onClick={handleGetCurrentLocation} disabled={isLocationLoading}>
                             {isLocationLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <MapPin className="mr-2 h-4 w-4"/>}
-                            Get My Current Location
+                            Capture Current Location
                         </Button>
-                        {currentLocation && (
+                         {currentLocation && (
                             <p className="text-sm text-muted-foreground">
-                                Lat: {currentLocation.latitude.toFixed(4)}, Lng: {currentLocation.longitude.toFixed(4)}
+                                Lat: {currentLocation.lat.toFixed(4)}, Lng: {currentLocation.lng.toFixed(4)}
                             </p>
                         )}
                     </div>
+                     <p className="text-sm text-muted-foreground">Or drag the pin to your precise location on the map.</p>
+                     <div className="h-[400px] w-full rounded-lg overflow-hidden border">
+                         <GoogleMap 
+                            onLocationChange={handleMapLocationChange}
+                            initialCenter={currentLocation}
+                            isDraggable={true}
+                         />
+                     </div>
                 </div>
 
                 <div className="space-y-4">

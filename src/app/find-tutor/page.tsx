@@ -16,14 +16,20 @@ import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { useMemo } from 'react';
 import { useMemoFirebase } from "@/firebase/provider";
+import { GoogleMap } from "@/components/google-map";
 
 const { firestore } = initializeFirebase();
 
 export default function FindTutorPage() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [showMap, setShowMap] = useState(false);
 
   const tutorsQuery = useMemoFirebase(() => 
-    query(collection(firestore, "users"), where("role", "==", "teacher"))
+    query(
+      collection(firestore, "users"), 
+      where("role", "==", "teacher"),
+      where("tutorVerificationStatus", "==", "verified")
+    )
   , [firestore]);
 
   const { data: tutors, isLoading, error } = useCollection<any>(tutorsQuery);
@@ -65,12 +71,22 @@ export default function FindTutorPage() {
                 />
             </div>
             <div className="flex justify-center mt-4">
-                <Button className="rounded-xl">
+                <Button className="rounded-xl" onClick={() => setShowMap(!showMap)}>
                     <MapPin className="mr-2 h-4 w-4" />
-                    Find Nearest Tutor/Institute
+                    {showMap ? 'Hide Map' : 'Find Nearest Tutor/Institute'}
                 </Button>
             </div>
         </div>
+
+        {showMap && (
+          <div className="mb-8">
+            <Card className="rounded-xl shadow-md">
+              <CardContent className="p-2">
+                 <GoogleMap tutors={filteredTutors} height="500px" />
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {isLoading && (
           <div className="flex justify-center">
@@ -130,7 +146,7 @@ export default function FindTutorPage() {
            </div>
         )}
          {!isLoading && filteredTutors.length === 0 && (
-          <p className="text-center text-muted-foreground mt-8">No tutors found. Try adjusting your search.</p>
+          <p className="text-center text-muted-foreground mt-8">No verified tutors found. Try adjusting your search or check back later.</p>
         )}
       </main>
       <Footer />

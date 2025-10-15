@@ -12,14 +12,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useMemoFirebase } from "@/firebase/provider";
+import { BookingModal } from "@/components/booking-modal";
 
 const { firestore } = initializeFirebase();
 
 export default function TutorDetailPage() {
   const params = useParams();
   const { id } = params;
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
 
   const tutorDocRef = useMemoFirebase(() => 
     typeof id === "string" ? doc(firestore, "users", id) : null
@@ -48,7 +50,7 @@ export default function TutorDetailPage() {
         <main className="flex-grow container mx-auto py-12 px-4 text-center">
           <h2 className="text-2xl font-bold text-destructive">Tutor not found</h2>
           <p className="text-muted-foreground mt-2">
-            {error ? error.message : "The tutor you are looking for does not exist."}
+            {error ? error.message : "The tutor you are looking for does not exist or is not verified."}
           </p>
           <Button asChild className="mt-4">
               <a href="/find-tutor">Back to Search</a>
@@ -60,6 +62,7 @@ export default function TutorDetailPage() {
   }
 
   return (
+    <>
     <div className="bg-background">
       <Header />
       <main className="container mx-auto py-12 px-4">
@@ -88,7 +91,7 @@ export default function TutorDetailPage() {
                                <p className="text-2xl font-bold text-primary">PKR {tutor.hourlyPricing}/hr</p>
                             </div>
                         </div>
-                        <Button size="lg" className="rounded-xl w-full sm:w-auto">Book Now</Button>
+                        <Button size="lg" className="rounded-xl w-full sm:w-auto" onClick={() => setIsBookingModalOpen(true)}>Book Now</Button>
                     </div>
                 </CardContent>
             </Card>
@@ -123,7 +126,7 @@ export default function TutorDetailPage() {
                      <div>
                         <h3 className="text-lg font-semibold flex items-center gap-2"><BookOpen className="text-primary"/> Subjects</h3>
                         <div className="flex flex-wrap gap-2 mt-2">
-                            {tutor.teachingSubjects.map((subject: string) => (
+                            {tutor.teachingSubjects?.map((subject: string) => (
                                 <Badge key={subject} variant="secondary">{subject}</Badge>
                             ))}
                         </div>
@@ -141,10 +144,24 @@ export default function TutorDetailPage() {
              <Card className="rounded-xl shadow-sm">
                 <CardContent className="p-6">
                      <h2 className="text-2xl font-bold font-headline mb-4">Available Slots</h2>
-                      {/* Placeholder for availability calendar */}
-                     <div className="text-center text-muted-foreground py-8">
-                        <p>Availability calendar coming soon.</p>
-                    </div>
+                      {tutor.availableSlots && tutor.availableSlots.length > 0 ? (
+                        <div className="space-y-4">
+                          {tutor.availableSlots.filter((day: any) => day.slots.length > 0).map((day: any) => (
+                            <div key={day.day}>
+                              <h4 className="font-semibold">{day.day}</h4>
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                {day.slots.map((slot: any, index: number) => (
+                                  <Badge key={index} variant="outline">{slot.startTime} - {slot.endTime}</Badge>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center text-muted-foreground py-8">
+                            <p>Tutor has not set their availability yet.</p>
+                        </div>
+                      )}
                 </CardContent>
             </Card>
           </div>
@@ -152,5 +169,7 @@ export default function TutorDetailPage() {
       </main>
       <Footer />
     </div>
+    {tutor && <BookingModal tutor={tutor} isOpen={isBookingModalOpen} setIsOpen={setIsBookingModalOpen} />}
+    </>
   );
 }
