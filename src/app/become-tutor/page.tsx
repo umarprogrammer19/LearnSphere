@@ -136,8 +136,12 @@ export default function BecomeTutorPage() {
       });
 
       let phoneNumber = userData.phoneNumber;
-      if (!phoneNumber.startsWith('+92')) {
+      if (phoneNumber && !phoneNumber.startsWith('+92')) {
         phoneNumber = `+92${phoneNumber.replace(/^0/, '')}`;
+      } else if (!phoneNumber) {
+          toast({variant: "destructive", title: "Missing Phone Number", description: "Please add a phone number to your profile first."})
+          router.push('/profile');
+          return;
       }
       
       router.push(`/verify-otp?phone=${encodeURIComponent(phoneNumber)}`);
@@ -167,7 +171,7 @@ export default function BecomeTutorPage() {
           role: "teacher",
           degreeScreenshots: degreeUrls,
           tutorVerificationStatus: "pending",
-          currentLocation: currentLocation ? {latitude: currentLocation.latitude, longitude: currentLocation.longitude} : userData?.currentLocation || { latitude: "", longitude: "" },
+          currentLocation: currentLocation ? {latitude: currentLocation.latitude, longitude: currentLocation.longitude} : userData?.currentLocation || null,
           updatedAt: serverTimestamp(),
         },
         { merge: true }
@@ -204,7 +208,10 @@ export default function BecomeTutorPage() {
     }
   };
   
-   const handleSlotChange = (checked: boolean | string, dayIndex: number, slot: string) => {
+   const handleSlotChange = (e: React.MouseEvent<HTMLButtonElement>, checked: boolean | string, dayIndex: number, slot: string) => {
+      e.preventDefault();
+      e.stopPropagation();
+
       const nextSlot = timeSlots[timeSlots.indexOf(slot) + 1] || "00:00";
       const currentSlots = tutorForm.getValues(`availableSlots.${dayIndex}.slots`);
       let newSlots;
@@ -362,7 +369,24 @@ export default function BecomeTutorPage() {
                                               <Checkbox
                                                   id={`${item.day}-${slot}`}
                                                   checked={isChecked}
-                                                  onCheckedChange={(checked) => handleSlotChange(checked, dayIndex, slot)}
+                                                  onCheckedChange={(checked) => {
+                                                      // This doesn't receive a mouse event directly, so we can't prevent default here.
+                                                      // The scroll issue is more likely related to how the form state is updated.
+                                                      // We pass the checked state, day index, and slot.
+                                                      const currentSlots = tutorForm.getValues(`availableSlots.${dayIndex}.slots`);
+                                                      let newSlots;
+                                                      const nextSlot = timeSlots[timeSlots.indexOf(slot) + 1] || "00:00";
+                                                      
+                                                      if (checked) {
+                                                          newSlots = [...currentSlots, { startTime: slot, endTime: nextSlot }];
+                                                      } else {
+                                                          newSlots = currentSlots.filter(s => s.startTime !== slot);
+                                                      }
+
+                                                      const allDays = tutorForm.getValues('availableSlots');
+                                                      allDays[dayIndex].slots = newSlots.sort((a, b) => a.startTime.localeCompare(b.startTime));
+                                                      tutorForm.setValue('availableSlots', allDays, { shouldValidate: true, shouldDirty: true });
+                                                  }}
                                               />
                                               <label htmlFor={`${item.day}-${slot}`} className="text-sm font-normal cursor-pointer">
                                                   {timeRange}
@@ -396,3 +420,5 @@ export default function BecomeTutorPage() {
     </>
   );
 }
+
+    
