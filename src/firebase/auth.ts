@@ -204,10 +204,11 @@ export const getRecaptchaVerifier = (containerId: string) => {
     return null;
   }
 
-  if ((window as any).recaptchaVerifier) {
-    (window as any).recaptchaVerifier.clear();
+  // If a verifier has already been rendered, clear it.
+  if (window.recaptchaVerifier) {
+    window.recaptchaVerifier.clear();
   }
-  
+
   const verifier = new RecaptchaVerifier(auth, containerId, {
     size: "invisible",
     callback: (response: any) => {
@@ -218,9 +219,10 @@ export const getRecaptchaVerifier = (containerId: string) => {
     }
   });
 
-  (window as any).recaptchaVerifier = verifier;
+  window.recaptchaVerifier = verifier;
   return verifier;
 };
+
 
 export const startPhoneSignIn = async (
   phoneNumber: string,
@@ -234,24 +236,29 @@ export const confirmOtp = async (
   code: string,
   currentUser: User
 ) => {
-
-  const credential = PhoneAuthProvider.credential(confirmationResult.verificationId, code);
+  const credential = PhoneAuthProvider.credential(
+    confirmationResult.verificationId,
+    code
+  );
 
   // Link the phone credential to the currently signed-in user.
   // This is crucial to avoid creating a new user account and instead attach
   // the phone number to the existing user's profile.
-  await linkWithPhoneNumber(currentUser, credential);
+  const userCredential = await linkWithPhoneNumber(currentUser, credential);
+  const updatedUser = userCredential.user;
 
-  const userRef = doc(firestore, `users/${currentUser.uid}`);
-  await updateDoc(userRef, { 
-      isPhoneVerified: true, 
-      phoneNumber: currentUser.phoneNumber,
-      updatedAt: serverTimestamp(),
-      role: 'tutor' // Changed from 'teacher' to 'tutor' to match schema if needed
-    });
-  
-  return auth.currentUser;
+  const userRef = doc(firestore, `users/${updatedUser.uid}`);
+  // We use the phone number from the updated user object after linking.
+  await updateDoc(userRef, {
+    isPhoneVerified: true,
+    phoneNumber: updatedUser.phoneNumber,
+    updatedAt: serverTimestamp(),
+    role: "teacher",
+  }, { merge: true });
+
+  return updatedUser;
 };
+
 
 
 // --- Other Auth Actions ---
