@@ -39,7 +39,6 @@ export default function VerifyOtpPage() {
 
   // Robustly manage Firebase objects to prevent re-initialization issues.
   const confirmationResultRef = useRef<ConfirmationResult | null>(null);
-  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
   const recaptchaWrapperRef = useRef<HTMLDivElement>(null);
 
 
@@ -69,7 +68,7 @@ export default function VerifyOtpPage() {
 
 
   const sendOtp = useCallback(async () => {
-    if (!recaptchaWrapperRef.current) return;
+    if (!recaptchaWrapperRef.current || isResending) return;
     
     setIsLoading(true);
     setIsResending(true);
@@ -91,7 +90,6 @@ export default function VerifyOtpPage() {
       }
       
       const verifier = getRecaptchaVerifier("recaptcha-container-inner");
-      recaptchaVerifierRef.current = verifier;
 
       const confirmationResult = await startPhoneSignIn(phoneNumber, verifier);
       confirmationResultRef.current = confirmationResult;
@@ -102,17 +100,19 @@ export default function VerifyOtpPage() {
       handleAuthError(error, "Failed to send OTP");
     } finally {
       setIsLoading(false);
+      // isResending will be set to false by the cooldown timer
     }
-  }, [phoneNumber, toast, router, handleAuthError]);
+  }, [phoneNumber, toast, router, handleAuthError, isResending]);
 
 
   // Effect to send OTP on initial mount.
   useEffect(() => {
-    // setTimeout to ensure the DOM is ready for reCAPTCHA
-    const timer = setTimeout(() => {
+    // We only want to send OTP once on mount. A simple flag can prevent re-runs.
+    let didSendOtp = false;
+    if (!didSendOtp) {
         sendOtp();
-    }, 100);
-    return () => clearTimeout(timer);
+        didSendOtp = true;
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -128,7 +128,7 @@ export default function VerifyOtpPage() {
 
 
   const handleResendOtp = async () => {
-    if (isResending) return;
+    if (isResending || cooldown > 0) return;
     await sendOtp();
   };
   
@@ -202,7 +202,7 @@ export default function VerifyOtpPage() {
 
     setIsLoading(true);
     try {
-      await confirmOtp(activeConfirmationResult, code, currentUser);
+      await confirmOtp(activeConfirmationResult, code, currentUser, phoneNumber);
       toast({ title: "Phone Verified!", description: "Your tutor application can now be submitted." });
       // Redirect to dashboard, as the profile is now updated with tutor role.
       router.push("/dashboard"); 
@@ -276,7 +276,7 @@ export default function VerifyOtpPage() {
           variant="link"
           className="p-0 h-auto"
           onClick={handleResendOtp}
-          disabled={isResending}
+          disabled={isResending || cooldown > 0}
         >
           {cooldown > 0 ? (
             `Resend in ${cooldown}s`
@@ -291,7 +291,7 @@ export default function VerifyOtpPage() {
 
 declare global {
   interface Window {
-    recaptchaVerifier?: any;
+    recaptchaVerifier?: RecaptchaVerifier;
     confirmationResult?: ConfirmationResult;
   }
 }

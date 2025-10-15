@@ -199,12 +199,14 @@ export const handleMicrosoftSignIn = () => handleSocialSignIn("microsoft");
 
 // --- Phone Auth (OTP) ---
 export const getRecaptchaVerifier = (containerId: string) => {
-  // Ensure we're in a browser environment before accessing window.
+  // This function ensures the reCAPTCHA verifier is managed correctly,
+  // preventing re-initialization errors by clearing any existing instance
+  // before creating a new one. This is crucial for single-page applications
+  // where components might re-render.
   if (typeof window === 'undefined') {
-    return null;
+    return new RecaptchaVerifier(auth, containerId);
   }
 
-  // If a verifier has already been rendered, clear it.
   if (window.recaptchaVerifier) {
     window.recaptchaVerifier.clear();
   }
@@ -215,7 +217,12 @@ export const getRecaptchaVerifier = (containerId: string) => {
       // reCAPTCHA solved, allow signInWithPhoneNumber.
     },
     'expired-callback': () => {
-      // Response expired. Ask user to solve reCAPTCHA again.
+      // Response expired. User needs to solve reCAPTCHA again.
+      toast({
+        title: "reCAPTCHA Expired",
+        description: "Please try sending the code again.",
+        variant: "destructive"
+      });
     }
   });
 
@@ -234,7 +241,8 @@ export const startPhoneSignIn = async (
 export const confirmOtp = async (
   confirmationResult: ConfirmationResult,
   code: string,
-  currentUser: User
+  currentUser: User,
+  phoneNumber: string
 ) => {
   const credential = PhoneAuthProvider.credential(
     confirmationResult.verificationId,
@@ -242,16 +250,19 @@ export const confirmOtp = async (
   );
 
   // Link the phone credential to the currently signed-in user.
-  // This is crucial to avoid creating a new user account and instead attach
+  // This is the key step to prevent creating a duplicate user. It attaches
   // the phone number to the existing user's profile.
   const userCredential = await linkWithPhoneNumber(currentUser, credential);
   const updatedUser = userCredential.user;
 
   const userRef = doc(firestore, `users/${updatedUser.uid}`);
-  // We use the phone number from the updated user object after linking.
+  // After linking, we update the user's document in Firestore.
+  // We use the phone number that was successfully verified and passed into this function.
+  // The role is also updated to 'teacher', and { merge: true } ensures we don't
+  // overwrite other existing profile data.
   await updateDoc(userRef, {
     isPhoneVerified: true,
-    phoneNumber: updatedUser.phoneNumber,
+    phoneNumber: phoneNumber, // Use the verified phone number
     updatedAt: serverTimestamp(),
     role: "teacher",
   }, { merge: true });
