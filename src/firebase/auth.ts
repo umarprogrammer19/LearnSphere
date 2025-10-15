@@ -30,6 +30,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { initializeFirebase } from "@/firebase";
+import { useToast } from "@/hooks/use-toast";
 
 const { auth, firestore } = initializeFirebase();
 
@@ -204,7 +205,9 @@ export const getRecaptchaVerifier = (containerId: string) => {
   // before creating a new one. This is crucial for single-page applications
   // where components might re-render.
   if (typeof window === 'undefined') {
-    return new RecaptchaVerifier(auth, containerId);
+    // Return a dummy verifier for SSR, although it won't actually work.
+    // The actual reCAPTCHA must run in the browser.
+    return new RecaptchaVerifier(auth, containerId, { size: 'invisible' });
   }
 
   if (window.recaptchaVerifier) {
@@ -217,12 +220,13 @@ export const getRecaptchaVerifier = (containerId: string) => {
       // reCAPTCHA solved, allow signInWithPhoneNumber.
     },
     'expired-callback': () => {
-      // Response expired. User needs to solve reCAPTCHA again.
-      toast({
-        title: "reCAPTCHA Expired",
-        description: "Please try sending the code again.",
-        variant: "destructive"
-      });
+        const { toast } = useToast();
+        // Response expired. User needs to solve reCAPTCHA again.
+        toast({
+            title: "reCAPTCHA Expired",
+            description: "Please try sending the code again.",
+            variant: "destructive"
+        });
     }
   });
 
@@ -262,7 +266,7 @@ export const confirmOtp = async (
   // overwrite other existing profile data.
   await updateDoc(userRef, {
     isPhoneVerified: true,
-    phoneNumber: phoneNumber, // Use the verified phone number
+    phoneNumber: phoneNumber,
     updatedAt: serverTimestamp(),
     role: "teacher",
   }, { merge: true });
