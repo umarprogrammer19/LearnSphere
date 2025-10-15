@@ -67,7 +67,10 @@ const availableSlotsSchema = z.array(z.object({
         startTime: z.string(),
         endTime: z.string(),
     }))
-})).min(1, "Please select at least one available time slot.");
+})).min(1, "Please select at least one available time slot.").refine(
+    (days) => days.some(day => day.slots.length > 0),
+    { message: "Please select at least one available time slot." }
+);
 
 const tutorFormSchema = z.object({
   qualification: z.string().min(1, "Qualification is required."),
@@ -80,7 +83,7 @@ const tutorFormSchema = z.object({
     "student_home",
     "online",
     "center",
-  ]),
+  ], { required_error: "Preferred location is required."}),
   availableSlots: availableSlotsSchema
 });
 
@@ -111,7 +114,7 @@ export default function BecomeTutorPage() {
     },
   });
 
-  const { fields, replace } = useFieldArray({
+  const { fields } = useFieldArray({
       control: tutorForm.control,
       name: "availableSlots"
   });
@@ -145,7 +148,7 @@ export default function BecomeTutorPage() {
   ) => {
     if (!user) return;
     if (userData && !userData.isPhoneVerified) {
-      handlePhoneVerification();
+      await handlePhoneVerification(); // Await this to ensure OTP process starts
       return;
     }
 
@@ -190,16 +193,29 @@ export default function BecomeTutorPage() {
   };
 
   const handlePhoneVerification = async () => {
-    setShowPhoneVerify(true);
-    if (!user || !userData?.phoneNumber) return;
-    try {
-      const verifier = getRecaptchaVerifier("recaptcha-container-tutor");
-      const result = await startPhoneSignIn(userData.phoneNumber, verifier);
-      setConfirmationResult(result);
-      toast({
-        title: "OTP Sent",
-        description: `A code has been sent to ${userData.phoneNumber}`,
+    if (!user || !userData?.phoneNumber) {
+       toast({
+        variant: "destructive",
+        title: "Phone Number Missing",
+        description: "Please add a phone number to your profile before applying.",
       });
+      router.push('/profile');
+      return;
+    }
+
+    setShowPhoneVerify(true);
+
+    try {
+      // Ensure the container is visible before getting the verifier
+      setTimeout(async () => {
+        const verifier = getRecaptchaVerifier("recaptcha-container-tutor");
+        const result = await startPhoneSignIn(userData.phoneNumber, verifier);
+        setConfirmationResult(result);
+        toast({
+          title: "OTP Sent",
+          description: `A code has been sent to ${userData.phoneNumber}`,
+        });
+      }, 100);
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -211,7 +227,14 @@ export default function BecomeTutorPage() {
   };
 
   const handleVerifyOtp = async () => {
-    if (!confirmationResult || !otp || !user) return;
+    if (!confirmationResult || !otp || !user) {
+      toast({
+        variant: "destructive",
+        title: "Verification Failed",
+        description: "Something went wrong. Please try again.",
+      });
+      return;
+    };
     setIsOtpSubmitting(true);
     try {
       await confirmOtp(confirmationResult, otp);
@@ -249,8 +272,26 @@ export default function BecomeTutorPage() {
       setIsLocationLoading(false);
     }
   };
+  
+   const handleSlotChange = (checked: boolean | string, dayIndex: number, slot: string) => {
+      const nextSlot = timeSlots[timeSlots.indexOf(slot) + 1] || "00:00";
+      const currentSlots = tutorForm.getValues(`availableSlots.${dayIndex}.slots`);
+      let newSlots;
 
-  if (isUserLoading) {
+      if (checked) {
+          newSlots = [...currentSlots, { startTime: slot, endTime: nextSlot }];
+      } else {
+          newSlots = currentSlots.filter(s => s.startTime !== slot);
+      }
+      
+      const allDays = tutorForm.getValues('availableSlots');
+      allDays[dayIndex].slots = newSlots.sort((a, b) => a.startTime.localeCompare(b.startTime));
+      
+      tutorForm.setValue('availableSlots', allDays, { shouldValidate: true, shouldDirty: true });
+  }
+
+
+  if (isUserLoading || !userData) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -349,6 +390,7 @@ export default function BecomeTutorPage() {
                       type="file"
                       multiple
                       onChange={handleDegreeFilesChange}
+                      required
                     />
                   </FormControl>
                   <FormMessage />
@@ -370,43 +412,40 @@ export default function BecomeTutorPage() {
                 </div>
 
                 <div className="space-y-4">
-                  <FormLabel>Available Time Slots</FormLabel>
-                  {fields.map((item, dayIndex) => (
-                    <div key={item.id} className="p-4 border rounded-lg">
-                      <h3 className="font-semibold">{item.day}</h3>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 mt-2">
-                        {timeSlots.map((slot, slotIndex) => {
-                          const nextSlot = timeSlots[slotIndex + 1] || "00:00";
-                          const timeRange = `${slot} - ${nextSlot}`;
-                          const isChecked = tutorForm.watch(`availableSlots.${dayIndex}.slots`).some(s => s.startTime === slot);
+                  <FormField
+                      control={tutorForm.control}
+                      name="availableSlots"
+                      render={() => (
+                          <FormItem>
+                              <FormLabel>Available Time Slots</FormLabel>
+                              {fields.map((item, dayIndex) => (
+                                <div key={item.id} className="p-4 border rounded-lg">
+                                  <h3 className="font-semibold">{item.day}</h3>
+                                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 mt-2">
+                                    {timeSlots.map((slot) => {
+                                      const timeRange = `${slot} - ${timeSlots[timeSlots.indexOf(slot) + 1] || "00:00"}`;
+                                      const isChecked = tutorForm.watch(`availableSlots.${dayIndex}.slots`).some(s => s.startTime === slot);
 
-                          return (
-                            <div key={slot} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={`${item.day}-${slot}`}
-                                checked={isChecked}
-                                onCheckedChange={(checked) => {
-                                  const currentSlots = tutorForm.getValues(`availableSlots.${dayIndex}.slots`);
-                                  const newSlots = checked
-                                    ? [...currentSlots, { startTime: slot, endTime: nextSlot }]
-                                    : currentSlots.filter(s => s.startTime !== slot);
-                                  
-                                  const allDays = tutorForm.getValues('availableSlots');
-                                  allDays[dayIndex].slots = newSlots.sort((a, b) => a.startTime.localeCompare(b.startTime));
-                                  
-                                  tutorForm.setValue('availableSlots', allDays, { shouldValidate: true, shouldDirty: true });
-                                }}
-                              />
-                              <label htmlFor={`${item.day}-${slot}`} className="text-sm">
-                                {timeRange}
-                              </label>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                   <FormMessage>{tutorForm.formState.errors.availableSlots?.root?.message}</FormMessage>
+                                      return (
+                                          <div key={slot} className="flex items-center space-x-2">
+                                              <Checkbox
+                                                  id={`${item.day}-${slot}`}
+                                                  checked={isChecked}
+                                                  onCheckedChange={(checked) => handleSlotChange(checked, dayIndex, slot)}
+                                              />
+                                              <label htmlFor={`${item.day}-${slot}`} className="text-sm font-normal cursor-pointer">
+                                                  {timeRange}
+                                              </label>
+                                          </div>
+                                      )
+                                    })}
+                                  </div>
+                                </div>
+                              ))}
+                              <FormMessage>{tutorForm.formState.errors.availableSlots?.message}</FormMessage>
+                          </FormItem>
+                      )}
+                  />
                 </div>
 
 
@@ -438,13 +477,14 @@ export default function BecomeTutorPage() {
               value={otp}
               onChange={(e) => setOtp(e.target.value)}
               placeholder="Enter 6-digit OTP"
+              maxLength={6}
             />
-            <div id="recaptcha-container-tutor"></div>
+            <div id="recaptcha-container-tutor" className="flex justify-center"></div>
           </div>
           <DialogFooter>
             <Button
               onClick={handleVerifyOtp}
-              disabled={isOtpSubmitting || !otp}
+              disabled={isOtpSubmitting || !otp || otp.length < 6}
             >
               {isOtpSubmitting ? (
                 <Loader2 className="animate-spin" />
@@ -458,5 +498,3 @@ export default function BecomeTutorPage() {
     </>
   );
 }
-
-    
