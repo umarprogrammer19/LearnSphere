@@ -31,6 +31,8 @@ import {
 } from "firebase/firestore";
 import { initializeFirebase } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
+
 
 const { auth, firestore } = initializeFirebase();
 
@@ -200,13 +202,7 @@ export const handleMicrosoftSignIn = () => handleSocialSignIn("microsoft");
 
 // --- Phone Auth (OTP) ---
 export const getRecaptchaVerifier = (containerId: string) => {
-  // This function ensures the reCAPTCHA verifier is managed correctly,
-  // preventing re-initialization errors by clearing any existing instance
-  // before creating a new one. This is crucial for single-page applications
-  // where components might re-render.
   if (typeof window === 'undefined') {
-    // Return a dummy verifier for SSR, although it won't actually work.
-    // The actual reCAPTCHA must run in the browser.
     return new RecaptchaVerifier(auth, containerId, { size: 'invisible' });
   }
 
@@ -217,11 +213,8 @@ export const getRecaptchaVerifier = (containerId: string) => {
   const verifier = new RecaptchaVerifier(auth, containerId, {
     size: "invisible",
     callback: (response: any) => {
-      // reCAPTCHA solved, allow signInWithPhoneNumber.
     },
     'expired-callback': () => {
-        const { toast } = useToast();
-        // Response expired. User needs to solve reCAPTCHA again.
         toast({
             title: "reCAPTCHA Expired",
             description: "Please try sending the code again.",
@@ -253,23 +246,17 @@ export const confirmOtp = async (
     code
   );
 
-  // Link the phone credential to the currently signed-in user.
-  // This is the key step to prevent creating a duplicate user. It attaches
-  // the phone number to the existing user's profile.
   const userCredential = await linkWithPhoneNumber(currentUser, credential);
   const updatedUser = userCredential.user;
 
   const userRef = doc(firestore, `users/${updatedUser.uid}`);
-  // After linking, we update the user's document in Firestore.
-  // We use the phone number that was successfully verified and passed into this function.
-  // The role is also updated to 'teacher', and { merge: true } ensures we don't
-  // overwrite other existing profile data.
+  
   await updateDoc(userRef, {
     isPhoneVerified: true,
     phoneNumber: phoneNumber,
     updatedAt: serverTimestamp(),
     role: "teacher",
-  }, { merge: true });
+  } as Partial<FullUserProfile>);
 
   return updatedUser;
 };
