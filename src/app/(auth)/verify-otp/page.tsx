@@ -36,11 +36,10 @@ export default function VerifyOtpPage() {
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // --- Start of robust state management for Firebase objects ---
+  // Robustly manage Firebase objects to prevent re-initialization issues.
   const confirmationResultRef = useRef<ConfirmationResult | null>(null);
   const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
   const recaptchaWrapperRef = useRef<HTMLDivElement>(null);
-  // --- End of robust state management ---
 
 
   const handleAuthError = useCallback((error: any, title: string) => {
@@ -62,7 +61,6 @@ export default function VerifyOtpPage() {
       title: title,
       description: friendlyMessage,
     });
-    // Reset state on error to allow retry
     setIsLoading(false);
     setIsResending(false);
     setCooldown(0);
@@ -70,30 +68,35 @@ export default function VerifyOtpPage() {
 
 
   const sendOtp = useCallback(async () => {
+    if (!recaptchaWrapperRef.current) return;
+    
     setIsLoading(true);
-    setIsResending(true); // Disable resend button
+    setIsResending(true);
 
     if (!phoneNumber) {
         toast({ variant: "destructive", title: "Error", description: "Phone number not provided." });
         router.push("/signup");
         setIsLoading(false);
+        setIsResending(false);
         return;
     }
 
     try {
-      // Ensure the container is visible for reCAPTCHA
-      if (recaptchaWrapperRef.current) {
-        recaptchaWrapperRef.current.innerHTML = `<div id="recaptcha-container"></div>`;
+      // Ensure container is clean for reCAPTCHA
+      recaptchaWrapperRef.current.innerHTML = `<div id="recaptcha-container-inner"></div>`;
+      const recaptchaContainer = document.getElementById('recaptcha-container-inner');
+      if (!recaptchaContainer) {
+          throw new Error("reCAPTCHA container not found in DOM.");
       }
       
-      const verifier = getRecaptchaVerifier("recaptcha-container");
+      const verifier = getRecaptchaVerifier("recaptcha-container-inner");
       recaptchaVerifierRef.current = verifier;
 
       const confirmationResult = await startPhoneSignIn(phoneNumber, verifier);
       confirmationResultRef.current = confirmationResult;
       
       toast({ title: "OTP Sent", description: `A code has been sent to ${phoneNumber}` });
-      setCooldown(60); // Start cooldown after successful send
+      setCooldown(60); 
     } catch (error: any) {
       handleAuthError(error, "Failed to send OTP");
     } finally {
@@ -102,25 +105,29 @@ export default function VerifyOtpPage() {
   }, [phoneNumber, toast, router, handleAuthError]);
 
 
-  // Effect to send OTP only once on initial load
+  // Effect to send OTP on initial mount.
   useEffect(() => {
-    sendOtp();
-  }, [sendOtp]);
+    // setTimeout to ensure the DOM is ready for reCAPTCHA
+    const timer = setTimeout(() => {
+        sendOtp();
+    }, 100);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Effect for cooldown timer
   useEffect(() => {
     if (cooldown > 0) {
       const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
       return () => clearTimeout(timer);
-    } else {
-        setIsResending(false); // Enable resend button when cooldown is over
+    } else if (cooldown === 0 && isResending) {
+        setIsResending(false);
     }
-  }, [cooldown]);
+  }, [cooldown, isResending]);
 
 
   const handleResendOtp = async () => {
     if (isResending) return;
-    // We just call sendOtp again, which now correctly handles re-initialization
     await sendOtp();
   };
   
@@ -183,7 +190,8 @@ export default function VerifyOtpPage() {
     setIsLoading(true);
     try {
       await confirmOtp(activeConfirmationResult, code);
-      toast({ title: "Phone Verified", description: "Your phone number has been successfully verified." });
+      toast({ title: "Phone Verified!", description: "Your tutor application can now be submitted." });
+      // Redirect to dashboard, as the profile is now updated with tutor role.
       router.push("/dashboard"); 
     } catch (error: any) {
       let friendlyMessage = "An unknown error occurred.";
@@ -221,12 +229,12 @@ export default function VerifyOtpPage() {
           Check your Phone
         </CardTitle>
         <CardDescription>
-          We&apos;ve sent a 6-digit code to {phoneNumber}. Enter it below.
+          We've sent a 6-digit code to {phoneNumber}. Enter it below.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div id="recaptcha-wrapper" ref={recaptchaWrapperRef} className="flex justify-center my-4">
-          <div id="recaptcha-container"></div>
+          {/* This div will be populated by the getRecaptchaVerifier function */}
         </div>
         <div
           className="flex justify-center gap-2"
@@ -250,7 +258,7 @@ export default function VerifyOtpPage() {
         </Button>
       </CardContent>
       <CardFooter className="flex flex-col items-center text-center text-sm text-muted-foreground">
-        <span>Didn&apos;t receive a code?</span>
+        <span>Didn't receive a code?</span>
         <Button
           variant="link"
           className="p-0 h-auto"

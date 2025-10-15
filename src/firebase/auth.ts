@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -17,6 +18,8 @@ import {
   User,
   updateProfile,
   linkWithPhoneNumber,
+  PhoneAuthProvider,
+  PhoneAuthCredential,
 } from "firebase/auth";
 import {
   getFirestore,
@@ -216,24 +219,33 @@ export const confirmOtp = async (
   confirmationResult: ConfirmationResult,
   code: string
 ) => {
-  const result = await confirmationResult.confirm(code);
-  const user = result.user;
+  const currentUser = auth.currentUser;
   
-  if (auth.currentUser && auth.currentUser.uid !== user.uid) {
-    // This case shouldn't happen with our flow but as a safeguard.
-    // We are linking, not signing in a new user.
-    console.error("OTP confirmed for a different user. This is unexpected.");
-    return auth.currentUser;
+  if (!currentUser) {
+    // This case handles sign-in with phone for a user who might not be logged in.
+    // However, for the tutor flow, a user must already be logged in.
+    // This could be a separate sign-in flow, but for now we focus on linking.
+    throw new Error("User is not authenticated. Cannot link phone number.");
   }
 
-  const userRef = doc(firestore, `users/${user.uid}`);
+  // Create a credential from the confirmation result and the OTP code.
+  const credential = PhoneAuthProvider.credential(confirmationResult.verificationId, code);
+
+  // Link the phone credential to the currently signed-in user.
+  // This prevents creating a new user and instead attaches the phone number to the existing account.
+  await linkWithPhoneNumber(currentUser, credential);
+
+  // After successfully linking, update the user's document in Firestore.
+  const userRef = doc(firestore, `users/${currentUser.uid}`);
   await setDoc(userRef, { 
       isPhoneVerified: true, 
-      phoneNumber: user.phoneNumber, 
+      phoneNumber: currentUser.phoneNumber || confirmationResult.verificationId, // Fallback might be needed if not immediately available
       updatedAt: serverTimestamp(),
-      role: 'teacher'
-    }, { merge: true });
-  return user;
+      role: 'teacher' // Update the role to 'teacher' upon successful verification for tutor application.
+    }, { merge: true }); // Use merge: true to only update specified fields.
+  
+  // Return the updated user object.
+  return auth.currentUser;
 };
 
 
