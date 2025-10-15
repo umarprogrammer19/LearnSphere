@@ -31,6 +31,7 @@ import {
 } from "firebase/firestore";
 import { initializeFirebase } from "@/firebase";
 import { toast } from "@/hooks/use-toast";
+import { FullUserProfile } from "@/firebase/auth";
 
 
 const { auth, firestore } = initializeFirebase();
@@ -48,25 +49,25 @@ export interface UserData {
 }
 
 export interface FullUserProfile extends UserData {
-    uid: string;
-    role: "student" | "teacher" | "shop_owner" | "rider";
-    isEmailVerified: boolean;
-    isPhoneVerified: boolean;
-    tutorVerificationStatus: "pending" | "verified" | "rejected" | "unverified";
-    qualification: string;
-    board: string;
-    classGrade: string;
-    about: string;
-    profileImageUrl: string;
-    schoolName: string;
-    availableSlots: any[];
-    currentLocation: { latitude: string, longitude: string };
-    CNIC: string;
-    degreeScreenshots: string[];
-    isProfileCompleted: boolean;
-    createdAt: any;
-    updatedAt: any;
-    lastActiveAt?: any;
+  uid: string;
+  role: "student" | "teacher" | "shop_owner" | "rider";
+  isEmailVerified: boolean;
+  isPhoneVerified: boolean;
+  tutorVerificationStatus: "pending" | "verified" | "rejected" | "unverified";
+  qualification: string;
+  board: string;
+  classGrade: string;
+  about: string;
+  profileImageUrl: string;
+  schoolName: string;
+  availableSlots: any[];
+  currentLocation: { latitude: string, longitude: string };
+  CNIC: string;
+  degreeScreenshots: string[];
+  isProfileCompleted: boolean;
+  createdAt: any;
+  updatedAt: any;
+  lastActiveAt?: any;
 }
 
 
@@ -85,7 +86,7 @@ const createUserProfile = async (user: User, additionalData: Partial<UserData> =
       updateData.firstName = additionalData.firstName || user.displayName?.split(' ')[0];
     }
     if (!userDoc.data().lastName && (additionalData.lastName || user.displayName)) {
-       const nameParts = user.displayName?.split(' ') || [];
+      const nameParts = user.displayName?.split(' ') || [];
       updateData.lastName = additionalData.lastName || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : '');
     }
     await setDoc(userRef, updateData, { merge: true });
@@ -106,7 +107,7 @@ const createUserProfile = async (user: User, additionalData: Partial<UserData> =
     dateOfBirth: additionalData.dateOfBirth || "",
     country: additionalData.country || "",
     city: additionalData.city || "",
-    
+
     role: "student",
     qualification: "",
     board: "",
@@ -115,15 +116,15 @@ const createUserProfile = async (user: User, additionalData: Partial<UserData> =
     profileImageUrl: user.photoURL || "",
     schoolName: "",
     availableSlots: [],
-    currentLocation: { latitude: "", longitude: "" }, 
+    currentLocation: { latitude: "", longitude: "" },
     CNIC: "",
     degreeScreenshots: [],
-    
+
     isEmailVerified: user.emailVerified,
     isPhoneVerified: !!user.phoneNumber,
     tutorVerificationStatus: "unverified",
     isProfileCompleted: false,
-    
+
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     lastActiveAt: serverTimestamp(),
@@ -177,22 +178,22 @@ export const handleEmailSignIn = async (email: string, password: string) => {
 
 // --- Social Logins ---
 const handleSocialSignIn = async (providerName: "google" | "microsoft") => {
-    const provider = providerName === 'google' 
-        ? new GoogleAuthProvider() 
-        : new OAuthProvider("microsoft.com");
-  
-    try {
-        const userCredential = await signInWithPopup(auth, provider);
-        const user = userCredential.user;
-        await createUserProfile(user);
-        return user;
-    } catch (error: any) {
-        if (error.code !== "auth/popup-closed-by-user") {
-           console.error(`Error during ${providerName} sign-in:`, error);
-           throw error;
-        }
-        return null;
+  const provider = providerName === 'google'
+    ? new GoogleAuthProvider()
+    : new OAuthProvider("microsoft.com");
+
+  try {
+    const userCredential = await signInWithPopup(auth, provider);
+    const user = userCredential.user;
+    await createUserProfile(user);
+    return user;
+  } catch (error: any) {
+    if (error.code !== "auth/popup-closed-by-user") {
+      console.error(`Error during ${providerName} sign-in:`, error);
+      throw error;
     }
+    return null;
+  }
 };
 
 export const handleGoogleSignIn = () => handleSocialSignIn("google");
@@ -217,12 +218,12 @@ export const getRecaptchaVerifier = (containerId: string) => {
       // reCAPTCHA solved, allow signInWithPhoneNumber.
     },
     'expired-callback': () => {
-        // Response expired. Ask user to solve reCAPTCHA again.
-        toast({
-            title: "reCAPTCHA Expired",
-            description: "Please try sending the code again.",
-            variant: "destructive"
-        });
+      // Response expired. Ask user to solve reCAPTCHA again.
+      toast({
+        title: "reCAPTCHA Expired",
+        description: "Please try sending the code again.",
+        variant: "destructive"
+      });
     }
   });
 
@@ -241,7 +242,7 @@ export const startPhoneSignIn = async (
 /**
  * Confirms the OTP and links the phone number to the existing authenticated user.
  * It then updates the user's profile in Firestore to reflect their new 'teacher' role and verified phone status.
- * This approach prevents the creation of duplicate user documents.
+ * This approach prevents the creation of duplicate user documents by merging data into the existing user record.
  */
 export const confirmOtp = async (
   confirmationResult: ConfirmationResult,
@@ -249,27 +250,23 @@ export const confirmOtp = async (
   currentUser: User,
   phoneNumber: string
 ) => {
-  // Create a credential with the verification ID and the code provided by the user.
   const credential = PhoneAuthProvider.credential(
     confirmationResult.verificationId,
     code
   );
 
-  // Link the credential to the currently signed-in user.
   const userCredential = await linkWithPhoneNumber(currentUser, credential);
   const updatedUser = userCredential.user;
 
-  // Now, update the existing user's document in Firestore.
   const userRef = doc(firestore, `users/${updatedUser.uid}`);
-  
-  // By using updateDoc with merge:true on an existing document, we only modify the specified fields,
-  // preserving all other user data like `createdAt`, `isProfileCompleted`, etc.
+  // updateDoc performs a shallow merge. We update only the fields relevant to phone verification and role change.
+  // This preserves all other existing data on the user's document.
   await updateDoc(userRef, {
     isPhoneVerified: true,
-    phoneNumber: phoneNumber, // Use the phone number that was passed in for verification.
+    phoneNumber: phoneNumber,
     updatedAt: serverTimestamp(),
     role: "teacher",
-  } as Partial<FullUserProfile>, { merge: true });
+  } as Partial<FullUserProfile>);
 
   return updatedUser;
 };
