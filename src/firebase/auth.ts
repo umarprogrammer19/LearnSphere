@@ -198,14 +198,27 @@ export const handleMicrosoftSignIn = () => handleSocialSignIn("microsoft");
 
 // --- Phone Auth (OTP) ---
 export const getRecaptchaVerifier = (containerId: string) => {
-  if (window.recaptchaVerifier) {
-    window.recaptchaVerifier.clear();
+  // Ensure we're in a browser environment before accessing window.
+  if (typeof window === 'undefined') {
+    return null;
   }
-  window.recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
+
+  if ((window as any).recaptchaVerifier) {
+    (window as any).recaptchaVerifier.clear();
+  }
+  
+  const verifier = new RecaptchaVerifier(auth, containerId, {
     size: "invisible",
-    callback: (response: any) => {},
+    callback: (response: any) => {
+      // reCAPTCHA solved, allow signInWithPhoneNumber.
+    },
+    'expired-callback': () => {
+      // Response expired. Ask user to solve reCAPTCHA again.
+    }
   });
-  return window.recaptchaVerifier;
+
+  (window as any).recaptchaVerifier = verifier;
+  return verifier;
 };
 
 export const startPhoneSignIn = async (
@@ -220,31 +233,25 @@ export const confirmOtp = async (
   code: string
 ) => {
   const currentUser = auth.currentUser;
-  
   if (!currentUser) {
-    // This case handles sign-in with phone for a user who might not be logged in.
-    // However, for the tutor flow, a user must already be logged in.
-    // This could be a separate sign-in flow, but for now we focus on linking.
     throw new Error("User is not authenticated. Cannot link phone number.");
   }
 
-  // Create a credential from the confirmation result and the OTP code.
   const credential = PhoneAuthProvider.credential(confirmationResult.verificationId, code);
 
   // Link the phone credential to the currently signed-in user.
-  // This prevents creating a new user and instead attaches the phone number to the existing account.
+  // This is crucial to avoid creating a new user account and instead attach
+  // the phone number to the existing user's profile.
   await linkWithPhoneNumber(currentUser, credential);
 
-  // After successfully linking, update the user's document in Firestore.
   const userRef = doc(firestore, `users/${currentUser.uid}`);
   await setDoc(userRef, { 
       isPhoneVerified: true, 
-      phoneNumber: currentUser.phoneNumber || confirmationResult.verificationId, // Fallback might be needed if not immediately available
+      phoneNumber: currentUser.phoneNumber || confirmationResult.verificationId,
       updatedAt: serverTimestamp(),
-      role: 'teacher' // Update the role to 'teacher' upon successful verification for tutor application.
-    }, { merge: true }); // Use merge: true to only update specified fields.
+      role: 'teacher'
+    }, { merge: true });
   
-  // Return the updated user object.
   return auth.currentUser;
 };
 
