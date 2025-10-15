@@ -40,37 +40,26 @@ export default function VerifyOtpPage() {
 
   useEffect(() => {
     if (!window.recaptchaVerifier) {
-      getRecaptchaVerifier("recaptcha-container");
+      window.recaptchaVerifier = getRecaptchaVerifier("recaptcha-container");
     }
+    
+    const verifier = window.recaptchaVerifier;
 
     const handleOtpSendOnLoad = async () => {
-      let storedResult = null;
-      try {
-        const storedResultString = sessionStorage.getItem('confirmationResult');
-        if (storedResultString) {
-          storedResult = JSON.parse(storedResultString);
+        if (phoneNumber) {
+            // Render the reCAPTCHA verifier explicitly.
+            verifier.render().then(async (widgetId: any) => {
+                // Now that reCAPTCHA is rendered, we can safely send the OTP.
+                await handleSendOtp(false);
+            }).catch((error: any) => {
+                console.error("reCAPTCHA render error:", error);
+                toast({
+                    variant: "destructive",
+                    title: "reCAPTCHA Error",
+                    description: "Could not render reCAPTCHA. Please refresh the page.",
+                });
+            });
         }
-      } catch (e) {
-          console.error("Could not parse confirmationResult from session storage", e);
-      }
-
-      if (phoneNumber && !storedResult) {
-        await handleSendOtp();
-      } else if (storedResult) {
-          const reconstitutedResult: ConfirmationResult = {
-              ...storedResult,
-              confirm: (verificationCode: string) => {
-                  if(window.confirmationResult) {
-                      return window.confirmationResult.confirm(verificationCode);
-                  }
-                  return Promise.reject(new Error("Confirmation result not fully available. Please resend OTP."));
-              }
-          };
-          setConfirmationResult(reconstitutedResult);
-          if(window.confirmationResult) {
-              setConfirmationResult(window.confirmationResult);
-          }
-      }
     };
     
     handleOtpSendOnLoad();
@@ -106,25 +95,21 @@ export default function VerifyOtpPage() {
     }
 
     try {
-      const verifier = getRecaptchaVerifier("recaptcha-container");
-      // Render the verifier to ensure it's ready
-      await verifier.render();
+      const verifier = window.recaptchaVerifier;
+      if (!verifier) {
+          throw new Error("reCAPTCHA verifier not initialized.");
+      }
       const result = await startPhoneSignIn(phoneNumber, verifier);
       setConfirmationResult(result);
       window.confirmationResult = result;
-       try {
-        sessionStorage.setItem('confirmationResult', JSON.stringify(result));
-      } catch (e) {
-          console.error("Could not save confirmationResult to session storage", e);
-      }
 
       toast({ title: "OTP Sent", description: `A code has been sent to ${phoneNumber}` });
     } catch (error: any) {
-        let friendlyMessage = "An unknown error occurred.";
+        let friendlyMessage = "An unknown error occurred. Please try again.";
         if(error.code === 'auth/invalid-phone-number'){
             friendlyMessage = "Invalid phone number format. Please enter a valid +92 number."
-        } else if (error.code === 'auth/internal-error') {
-            friendlyMessage = "An internal error occurred. Please ensure your Firebase project is configured for phone auth."
+        } else if (error.code === 'auth/internal-error' || error.code === 'auth/invalid-app-credential') {
+            friendlyMessage = "An internal authentication error occurred. Please check your Firebase project's configuration for phone auth and authorized domains."
         }
         else {
             friendlyMessage = error.message;
@@ -295,5 +280,3 @@ declare global {
     confirmationResult?: ConfirmationResult;
   }
 }
-
-    
