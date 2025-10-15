@@ -15,6 +15,8 @@ import {
   signInWithPhoneNumber,
   ConfirmationResult,
   User,
+  updateProfile,
+  linkWithPhoneNumber,
 } from "firebase/auth";
 import {
   getFirestore,
@@ -27,13 +29,8 @@ import { initializeFirebase } from "@/firebase";
 
 const { auth, firestore } = initializeFirebase();
 
-// Set auth domain to fix popup issue with social logins
-if (auth.tenantId === undefined) {
-  auth.tenantId = null;
-}
 
-
-// User data structure
+// --- User data types ---
 interface UserData {
   firstName: string;
   lastName: string;
@@ -44,39 +41,66 @@ interface UserData {
   city: string;
 }
 
+interface FullUserProfile extends UserData {
+    uid: string;
+    role: "student" | "teacher" | "shop_owner" | "rider";
+    isEmailVerified: boolean;
+    isPhoneVerified: boolean;
+    tutorVerificationStatus: "pending" | "verified" | "rejected" | "unverified";
+    qualification: string;
+    board: string;
+    classGrade: string;
+    about: string;
+    profileImageUrl: string;
+    schoolName: string;
+    availableSlots: any[];
+    currentLocation: { latitude: string, longitude: string };
+    CNIC: string;
+    degreeScreenshots: string[];
+    isProfileCompleted: boolean;
+    createdAt: any;
+    updatedAt: any;
+    lastActiveAt?: any;
+}
+
+
 // --- User Profile Management ---
 const createUserProfile = async (user: User, additionalData: Partial<UserData> = {}) => {
   const userRef = doc(firestore, "users", user.uid);
   const userDoc = await getDoc(userRef);
 
-  // If user document already exists, don't overwrite with defaults
   if (userDoc.exists()) {
-    const updateData: any = {
+    const updateData: Partial<FullUserProfile> = {
       lastActiveAt: serverTimestamp(),
       isEmailVerified: user.emailVerified,
       profileImageUrl: user.photoURL || userDoc.data()?.profileImageUrl || '',
     };
-     if (!userDoc.data().firstName && additionalData.firstName) {
-      updateData.firstName = additionalData.firstName;
+    if (!userDoc.data().firstName && (additionalData.firstName || user.displayName)) {
+      updateData.firstName = additionalData.firstName || user.displayName?.split(' ')[0];
     }
-    if (!userDoc.data().lastName && additionalData.lastName) {
-      updateData.lastName = additionalData.lastName;
+    if (!userDoc.data().lastName && (additionalData.lastName || user.displayName)) {
+       const nameParts = user.displayName?.split(' ') || [];
+      updateData.lastName = additionalData.lastName || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : '');
     }
     await setDoc(userRef, updateData, { merge: true });
     return;
   }
 
-  const data = {
+  const nameParts = user.displayName?.split(' ') || [];
+  const firstName = additionalData.firstName || (nameParts[0] || '');
+  const lastName = additionalData.lastName || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : '');
+
+
+  const data: FullUserProfile = {
     uid: user.uid,
     email: user.email || additionalData.email || "",
-    firstName: additionalData.firstName || "",
-    lastName: additionalData.lastName || "",
+    firstName,
+    lastName,
     phoneNumber: user.phoneNumber || additionalData.phoneNumber || "",
     dateOfBirth: additionalData.dateOfBirth || "",
     country: additionalData.country || "",
     city: additionalData.city || "",
     
-    // Defaults
     role: "student",
     qualification: "",
     board: "",
@@ -85,12 +109,10 @@ const createUserProfile = async (user: User, additionalData: Partial<UserData> =
     profileImageUrl: user.photoURL || "",
     schoolName: "",
     availableSlots: [],
-    locationType: "",
     currentLocation: { latitude: "", longitude: "" }, 
     CNIC: "",
     degreeScreenshots: [],
     
-    // System fields
     isEmailVerified: user.emailVerified,
     isPhoneVerified: !!user.phoneNumber,
     tutorVerificationStatus: "unverified",
@@ -116,6 +138,8 @@ export const handleEmailSignUp = async (
     password
   );
   const user = userCredential.user;
+  const displayName = `${userData.firstName} ${userData.lastName}`;
+  await updateProfile(user, { displayName });
   await createUserProfile(user, userData);
   await sendEmailVerification(user);
   return user;
@@ -126,7 +150,7 @@ export const handleEmailSignIn = async (email: string, password: string) => {
   const user = userCredential.user;
 
   if (!user.emailVerified) {
-    await signOut(auth); // Sign out user
+    await signOut(auth);
     const error: any = new Error("Email not verified");
     error.code = "auth/email-not-verified";
     throw error;
@@ -154,11 +178,7 @@ const handleSocialSignIn = async (providerName: "google" | "microsoft") => {
     try {
         const userCredential = await signInWithPopup(auth, provider);
         const user = userCredential.user;
-        
-        const [firstName, ...lastNameParts] = (user.displayName || "").split(" ");
-        const lastName = lastNameParts.join(" ");
-
-        await createUserProfile(user, { firstName, lastName, email: user.email ?? '' });
+        await createUserProfile(user);
         return user;
     } catch (error: any) {
         if (error.code === 'auth/popup-closed-by-user') {
@@ -199,8 +219,21 @@ export const confirmOtp = async (
 ) => {
   const result = await confirmationResult.confirm(code);
   const user = result.user;
+  
+  if (auth.currentUser && auth.currentUser.uid !== user.uid) {
+    // This case shouldn't happen with our flow but as a safeguard.
+    // We are linking, not signing in a new user.
+    console.error("OTP confirmed for a different user. This is unexpected.");
+    return auth.currentUser;
+  }
+
   const userRef = doc(firestore, `users/${user.uid}`);
-  await setDoc(userRef, { isPhoneVerified: true, phoneNumber: user.phoneNumber, updatedAt: serverTimestamp() }, { merge: true });
+  await setDoc(userRef, { 
+      isPhoneVerified: true, 
+      phoneNumber: user.phoneNumber, 
+      updatedAt: serverTimestamp(),
+      role: 'teacher'
+    }, { merge: true });
   return user;
 };
 

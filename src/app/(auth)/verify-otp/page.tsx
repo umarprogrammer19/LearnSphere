@@ -38,21 +38,48 @@ export default function VerifyOtpPage() {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    if (phoneNumber && !window.confirmationResult) {
+    let storedResult = null;
+    try {
+      const storedResultString = sessionStorage.getItem('confirmationResult');
+      if (storedResultString) {
+        storedResult = JSON.parse(storedResultString);
+      }
+    } catch (e) {
+        console.error("Could not parse confirmationResult from session storage", e);
+    }
+
+
+    if (phoneNumber && !storedResult) {
       handleSendOtp();
-    } else if (window.confirmationResult) {
-        setConfirmationResult(window.confirmationResult as ConfirmationResult);
+    } else if (storedResult) {
+        // A bit of a hack to re-constitute the ConfirmationResult object
+        const reconstitutedResult: ConfirmationResult = {
+            ...storedResult,
+            confirm: (verificationCode: string) => {
+                // The actual confirm method is not available on the client-reconstituted object
+                // We will rely on the global window.confirmationResult which should be the real deal
+                if(window.confirmationResult) {
+                    return window.confirmationResult.confirm(verificationCode);
+                }
+                return Promise.reject(new Error("Confirmation result not fully available. Please resend OTP."));
+            }
+        };
+        setConfirmationResult(reconstitutedResult);
+        // Also ensure the global one is set if it exists
+        if(window.confirmationResult) {
+            setConfirmationResult(window.confirmationResult);
+        }
     }
   }, [phoneNumber]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (cooldown > 0 && isResending) {
+    if (cooldown > 0) {
       timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
     }
      if(cooldown === 0) setIsResending(false)
     return () => clearTimeout(timer);
-  }, [cooldown, isResending]);
+  }, [cooldown]);
 
   const handleSendOtp = async (isResend = false) => {
     if (!phoneNumber) {
@@ -66,6 +93,7 @@ export default function VerifyOtpPage() {
     }
     if (isResend) {
       setIsResending(true);
+      setCooldown(60);
     } else {
       setIsLoading(true);
     }
@@ -74,13 +102,18 @@ export default function VerifyOtpPage() {
       const verifier = getRecaptchaVerifier("recaptcha-container");
       const result = await startPhoneSignIn(phoneNumber, verifier);
       setConfirmationResult(result);
-      window.confirmationResult = result;
+      window.confirmationResult = result; // Store globally for access
+       try {
+        sessionStorage.setItem('confirmationResult', JSON.stringify(result));
+      } catch (e) {
+          console.error("Could not save confirmationResult to session storage", e);
+      }
+
       toast({ title: "OTP Sent", description: `A code has been sent to ${phoneNumber}` });
-      setCooldown(60);
     } catch (error: any) {
         let friendlyMessage = "An unknown error occurred.";
         if(error.code === 'auth/invalid-phone-number'){
-            friendlyMessage = "Invalid phone number format. Please enter a valid number (e.g., +1234567890)."
+            friendlyMessage = "Invalid phone number format. Please enter a valid +92 number."
         } else {
             friendlyMessage = error.message;
         }
@@ -142,7 +175,11 @@ export default function VerifyOtpPage() {
       });
       return;
     }
-    if (!confirmationResult) {
+    
+    // Prioritize the globally stored, full ConfirmationResult object
+    const activeConfirmationResult = window.confirmationResult || confirmationResult;
+
+    if (!activeConfirmationResult) {
         toast({
             variant: "destructive",
             title: "Verification Expired",
@@ -152,9 +189,9 @@ export default function VerifyOtpPage() {
     }
     setIsLoading(true);
     try {
-      await confirmOtp(confirmationResult, code);
+      await confirmOtp(activeConfirmationResult, code);
       toast({ title: "Phone Verified", description: "Your phone number has been successfully verified." });
-      router.push("/");
+      router.push("/dashboard"); // Redirect to dashboard on success
     } catch (error: any) {
       let friendlyMessage = "An unknown error occurred.";
       switch (error.code) {
@@ -208,7 +245,7 @@ export default function VerifyOtpPage() {
               value={digit}
               onChange={(e) => handleInputChange(e, index)}
               onKeyDown={(e) => handleKeyDown(e, index)}
-              disabled={isLoading}
+              disabled={isLoading || isResending}
             />
           ))}
         </div>
@@ -225,7 +262,13 @@ export default function VerifyOtpPage() {
           onClick={() => handleSendOtp(true)}
           disabled={cooldown > 0 || isResending}
         >
-          {isResending ? <Loader2 className="animate-spin" /> : (cooldown > 0 && isResending ? `Resend in ${cooldown}s` : "Resend Code")}
+          {isResending && cooldown > 0 ? (
+            `Resend in ${cooldown}s`
+          ) : isResending ? (
+             <Loader2 className="animate-spin" />
+          ) : (
+             "Resend Code"
+          )}
         </Button>
       </CardFooter>
     </Card>
@@ -238,5 +281,3 @@ declare global {
     confirmationResult?: ConfirmationResult;
   }
 }
-
-    

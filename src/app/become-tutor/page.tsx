@@ -127,16 +127,20 @@ export default function BecomeTutorPage() {
   const handleTutorFormSubmit = async (
     values: z.infer<typeof tutorFormSchema>
   ) => {
-    if (!user) return;
+    if (!user || !userData) return;
 
-    // Check for phone verification first
-    if (!userData?.isPhoneVerified) {
+    if (!userData.isPhoneVerified) {
       toast({
         title: "Phone Verification Required",
         description: "Please verify your phone number to become a tutor.",
       });
-      // Redirect to the profile page to add/verify phone number
-      router.push(`/verify-otp?phone=${encodeURIComponent(userData?.phoneNumber || '')}`);
+
+      let phoneNumber = userData.phoneNumber;
+      if (!phoneNumber.startsWith('+92')) {
+        phoneNumber = `+92${phoneNumber.replace(/^0/, '')}`;
+      }
+      
+      router.push(`/verify-otp?phone=${encodeURIComponent(phoneNumber)}`);
       return;
     }
 
@@ -392,5 +396,3 @@ export default function BecomeTutorPage() {
     </>
   );
 }
-
-    
