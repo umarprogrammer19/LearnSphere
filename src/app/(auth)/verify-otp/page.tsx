@@ -47,11 +47,12 @@ export default function VerifyOtpPage() {
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (cooldown > 0) {
+    if (cooldown > 0 && isResending) {
       timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
     }
+     if(cooldown === 0) setIsResending(false)
     return () => clearTimeout(timer);
-  }, [cooldown]);
+  }, [cooldown, isResending]);
 
   const handleSendOtp = async (isResend = false) => {
     if (!phoneNumber) {
@@ -77,15 +78,20 @@ export default function VerifyOtpPage() {
       toast({ title: "OTP Sent", description: `A code has been sent to ${phoneNumber}` });
       setCooldown(60);
     } catch (error: any) {
+        let friendlyMessage = "An unknown error occurred.";
+        if(error.code === 'auth/invalid-phone-number'){
+            friendlyMessage = "Invalid phone number format. Please enter a valid number (e.g., +1234567890)."
+        } else {
+            friendlyMessage = error.message;
+        }
       toast({
         variant: "destructive",
         title: "Failed to send OTP",
-        description: error.message,
+        description: friendlyMessage,
       });
+       if (isResend) setIsResending(false);
     } finally {
-      if (isResend) {
-        setIsResending(false);
-      } else {
+      if (!isResend) {
         setIsLoading(false);
       }
     }
@@ -96,12 +102,14 @@ export default function VerifyOtpPage() {
     index: number
   ) => {
     const { value } = e.target;
-    const newOtp = [...otp];
-    newOtp[index] = value;
-    setOtp(newOtp);
+    if (/^[0-9]$/.test(value) || value === "") {
+        const newOtp = [...otp];
+        newOtp[index] = value;
+        setOtp(newOtp);
 
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
+        if (value && index < 5) {
+        inputRefs.current[index + 1]?.focus();
+        }
     }
   };
 
@@ -126,13 +134,21 @@ export default function VerifyOtpPage() {
   
   const handleSubmit = async () => {
     const code = otp.join("");
-    if (code.length !== 6 || !confirmationResult) {
+    if (code.length !== 6) {
       toast({
         variant: "destructive",
         title: "Invalid OTP",
         description: "Please enter the complete 6-digit code.",
       });
       return;
+    }
+    if (!confirmationResult) {
+        toast({
+            variant: "destructive",
+            title: "Verification Expired",
+            description: "Please request a new OTP code.",
+        });
+        return;
     }
     setIsLoading(true);
     try {
@@ -145,12 +161,18 @@ export default function VerifyOtpPage() {
           case "auth/invalid-verification-code":
               friendlyMessage = "The verification code is invalid. Please try again.";
               break;
+          case "auth/missing-verification-code":
+              friendlyMessage = "Please enter the 6-digit OTP.";
+              break;
           case "auth/too-many-requests":
               friendlyMessage = "Too many requests. Please try again later.";
               break;
           case "auth/captcha-check-failed":
               friendlyMessage = "reCAPTCHA check failed. Please refresh and try again.";
               break;
+          default:
+            friendlyMessage = error.message;
+            break;
       }
       toast({
         variant: "destructive",
@@ -203,7 +225,7 @@ export default function VerifyOtpPage() {
           onClick={() => handleSendOtp(true)}
           disabled={cooldown > 0 || isResending}
         >
-          {isResending ? <Loader2 className="animate-spin" /> : (cooldown > 0 ? `Resend in ${cooldown}s` : "Resend Code")}
+          {isResending ? <Loader2 className="animate-spin" /> : (cooldown > 0 && isResending ? `Resend in ${cooldown}s` : "Resend Code")}
         </Button>
       </CardFooter>
     </Card>
@@ -216,3 +238,5 @@ declare global {
     confirmationResult?: ConfirmationResult;
   }
 }
+
+    

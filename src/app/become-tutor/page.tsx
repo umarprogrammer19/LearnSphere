@@ -33,26 +33,12 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getFirestore, doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "@/firebase/config";
 import { initializeFirebase } from "@/firebase";
 import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
-import {
-  startPhoneSignIn,
-  getRecaptchaVerifier,
-  confirmOtp,
-} from "@/firebase/auth";
-import { ConfirmationResult } from "firebase/auth";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
 
 const { firestore } = initializeFirebase();
 
@@ -93,11 +79,6 @@ export default function BecomeTutorPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPhoneVerify, setShowPhoneVerify] = useState(false);
-  const [otp, setOtp] = useState("");
-  const [confirmationResult, setConfirmationResult] =
-    useState<ConfirmationResult | null>(null);
-  const [isOtpSubmitting, setIsOtpSubmitting] = useState(false);
   const [degreeFiles, setDegreeFiles] = useState<FileList | null>(null);
   const [currentLocation, setCurrentLocation] = useState<{latitude: number, longitude: number} | null>(null);
   const [isLocationLoading, setIsLocationLoading] = useState(false);
@@ -147,10 +128,18 @@ export default function BecomeTutorPage() {
     values: z.infer<typeof tutorFormSchema>
   ) => {
     if (!user) return;
-    if (userData && !userData.isPhoneVerified) {
-      await handlePhoneVerification(); // Await this to ensure OTP process starts
+
+    // Check for phone verification first
+    if (!userData?.isPhoneVerified) {
+      toast({
+        title: "Phone Verification Required",
+        description: "Please verify your phone number to become a tutor.",
+      });
+      // Redirect to the profile page to add/verify phone number
+      router.push(`/verify-otp?phone=${encodeURIComponent(userData?.phoneNumber || '')}`);
       return;
     }
+
 
     setIsSubmitting(true);
     try {
@@ -192,68 +181,6 @@ export default function BecomeTutorPage() {
     }
   };
 
-  const handlePhoneVerification = async () => {
-    if (!user || !userData?.phoneNumber) {
-       toast({
-        variant: "destructive",
-        title: "Phone Number Missing",
-        description: "Please add a phone number to your profile before applying.",
-      });
-      router.push('/profile');
-      return;
-    }
-
-    setShowPhoneVerify(true);
-
-    try {
-      // Ensure the container is visible before getting the verifier
-      setTimeout(async () => {
-        const verifier = getRecaptchaVerifier("recaptcha-container-tutor");
-        const result = await startPhoneSignIn(userData.phoneNumber, verifier);
-        setConfirmationResult(result);
-        toast({
-          title: "OTP Sent",
-          description: `A code has been sent to ${userData.phoneNumber}`,
-        });
-      }, 100);
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Failed to send OTP",
-        description: error.message,
-      });
-       setShowPhoneVerify(false);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    if (!confirmationResult || !otp || !user) {
-      toast({
-        variant: "destructive",
-        title: "Verification Failed",
-        description: "Something went wrong. Please try again.",
-      });
-      return;
-    };
-    setIsOtpSubmitting(true);
-    try {
-      await confirmOtp(confirmationResult, otp);
-      const userRef = doc(firestore, "users", user.uid);
-      await setDoc(userRef, { isPhoneVerified: true }, { merge: true });
-      toast({ title: "Phone Verified Successfully!" });
-      setShowPhoneVerify(false);
-      // Automatically submit the form now that phone is verified
-      await tutorForm.handleSubmit(handleTutorFormSubmit)();
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "OTP Verification Failed",
-        description: error.message,
-      });
-    } finally {
-      setIsOtpSubmitting(false);
-    }
-  };
 
   const handleGetCurrentLocation = () => {
     setIsLocationLoading(true);
@@ -462,39 +389,8 @@ export default function BecomeTutorPage() {
         </Card>
       </main>
       <Footer />
-
-      <Dialog open={showPhoneVerify} onOpenChange={setShowPhoneVerify}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Verify Your Phone Number</DialogTitle>
-            <DialogDescription>
-              To apply as a tutor, we need to verify your phone number. Enter
-              the 6-digit code we sent you.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <Input
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-              placeholder="Enter 6-digit OTP"
-              maxLength={6}
-            />
-            <div id="recaptcha-container-tutor" className="flex justify-center"></div>
-          </div>
-          <DialogFooter>
-            <Button
-              onClick={handleVerifyOtp}
-              disabled={isOtpSubmitting || !otp || otp.length < 6}
-            >
-              {isOtpSubmitting ? (
-                <Loader2 className="animate-spin" />
-              ) : (
-                "Verify & Continue"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }
+
+    
