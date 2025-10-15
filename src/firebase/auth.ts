@@ -31,7 +31,6 @@ import {
 } from "firebase/firestore";
 import { initializeFirebase } from "@/firebase";
 import { toast } from "@/hooks/use-toast";
-import { FullUserProfile } from "@/firebase/auth";
 
 
 const { auth, firestore } = initializeFirebase();
