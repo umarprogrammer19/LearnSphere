@@ -19,13 +19,14 @@ import {
   confirmOtp,
   getRecaptchaVerifier,
 } from "@/firebase/auth";
-import { ConfirmationResult, RecaptchaVerifier } from "firebase/auth";
+import { ConfirmationResult, RecaptchaVerifier, getAuth } from "firebase/auth";
 import { Loader2 } from "lucide-react";
 
 export default function VerifyOtpPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const auth = getAuth();
 
   const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
   const [isLoading, setIsLoading] = useState(false);
@@ -178,6 +179,8 @@ export default function VerifyOtpPage() {
     }
     
     const activeConfirmationResult = confirmationResultRef.current;
+    const currentUser = auth.currentUser;
+
 
     if (!activeConfirmationResult) {
         toast({
@@ -187,9 +190,19 @@ export default function VerifyOtpPage() {
         });
         return;
     }
+    if (!currentUser) {
+        toast({
+            variant: "destructive",
+            title: "Not Logged In",
+            description: "You must be logged in to verify a phone number.",
+        });
+        router.push("/login");
+        return;
+    }
+
     setIsLoading(true);
     try {
-      await confirmOtp(activeConfirmationResult, code);
+      await confirmOtp(activeConfirmationResult, code, currentUser);
       toast({ title: "Phone Verified!", description: "Your tutor application can now be submitted." });
       // Redirect to dashboard, as the profile is now updated with tutor role.
       router.push("/dashboard"); 

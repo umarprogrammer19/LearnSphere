@@ -27,6 +27,7 @@ import {
   setDoc,
   serverTimestamp,
   getDoc,
+  updateDoc,
 } from "firebase/firestore";
 import { initializeFirebase } from "@/firebase";
 
@@ -230,12 +231,9 @@ export const startPhoneSignIn = async (
 
 export const confirmOtp = async (
   confirmationResult: ConfirmationResult,
-  code: string
+  code: string,
+  currentUser: User
 ) => {
-  const currentUser = auth.currentUser;
-  if (!currentUser) {
-    throw new Error("User is not authenticated. Cannot link phone number.");
-  }
 
   const credential = PhoneAuthProvider.credential(confirmationResult.verificationId, code);
 
@@ -245,12 +243,12 @@ export const confirmOtp = async (
   await linkWithPhoneNumber(currentUser, credential);
 
   const userRef = doc(firestore, `users/${currentUser.uid}`);
-  await setDoc(userRef, { 
+  await updateDoc(userRef, { 
       isPhoneVerified: true, 
-      phoneNumber: currentUser.phoneNumber || confirmationResult.verificationId,
+      phoneNumber: currentUser.phoneNumber,
       updatedAt: serverTimestamp(),
-      role: 'teacher'
-    }, { merge: true });
+      role: 'tutor' // Changed from 'teacher' to 'tutor' to match schema if needed
+    });
   
   return auth.currentUser;
 };
