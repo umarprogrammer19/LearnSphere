@@ -8,19 +8,19 @@ body {
 
 @layer base {
   :root {
-    --background: 220 40% 98%;
+    --background: 220 40% 98%; /* #F8FAFC */
     --foreground: 224 71% 4%;
     --card: 210 40% 100%;
     --card-foreground: 224 71% 4%;
     --popover: 210 40% 100%;
     --popover-foreground: 224 71% 4%;
-    --primary: 228 91% 62%;
+    --primary: 228 91% 62%; /* #4A6CF7 */
     --primary-foreground: 210 40% 98%;
     --secondary: 210 40% 91%;
     --secondary-foreground: 224 71% 4%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215 20% 65%;
-    --accent: 44 98% 65%;
+    --accent: 44 98% 65%; /* #FFCE4E */
     --accent-foreground: 45 100% 15%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
@@ -33,14 +33,14 @@ body {
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.75rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Custom Sidebar Colors */
+    --sidebar-background: 240 10% 3.9%; /* A dark color for the sidebar */
+    --sidebar-foreground: 210 40% 98%; /* Light text for the sidebar */
+    --sidebar-muted-foreground: 215 20% 65%;
+    --sidebar-active: 142 76% 36%; /* Active link background - a green color */
+    --sidebar-active-foreground: 210 40% 98%;
+    --sidebar-hover: 240 4% 15%; /* Hover state background */
   }
   .dark {
     --background: 222 47% 11%;
@@ -67,14 +67,13 @@ body {
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-muted-foreground: 215 20% 65%;
+    --sidebar-active: 142 71% 45%; /* A brighter green for dark mode */
+    --sidebar-active-foreground: 210 40% 98%;
+    --sidebar-hover: 217 33% 17%;
   }
 }
 
