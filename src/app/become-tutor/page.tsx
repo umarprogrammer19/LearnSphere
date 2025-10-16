@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useUser } from "@/hooks/use-user";
@@ -452,7 +453,7 @@ export default function BecomeTutorPage() {
                           </TabsList>
                           {fields.map((item, dayIndex) => (
                             <TabsContent key={item.id} value={item.day}>
-                              <SlotManager dayIndex={dayIndex} control={tutorForm.control} day={item.day} />
+                              <SlotManager dayIndex={dayIndex} control={tutorForm.control} />
                             </TabsContent>
                           ))}
                         </Tabs>
@@ -481,11 +482,13 @@ export default function BecomeTutorPage() {
 }
 
 
-function SlotManager({ dayIndex, control, day }: { dayIndex: number, control: any, day: string }) {
+function SlotManager({ dayIndex, control }: { dayIndex: number, control: any }) {
   const { fields, append, remove } = useFieldArray({
     control,
     name: `availableSlots.${dayIndex}.slots`
   });
+  
+  const day = control.getValues(`availableSlots.${dayIndex}.day`);
 
   return (
     <div className="space-y-4 p-4 border rounded-lg">
@@ -551,3 +554,5 @@ function SlotManager({ dayIndex, control, day }: { dayIndex: number, control: an
     </div>
   );
 }
+
+    
