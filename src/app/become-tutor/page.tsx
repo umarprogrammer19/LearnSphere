@@ -452,7 +452,7 @@ export default function BecomeTutorPage() {
                           </TabsList>
                           {fields.map((item, dayIndex) => (
                             <TabsContent key={item.id} value={item.day}>
-                              <SlotManager dayIndex={dayIndex} control={tutorForm.control} />
+                              <SlotManager dayIndex={dayIndex} control={tutorForm.control} day={item.day} />
                             </TabsContent>
                           ))}
                         </Tabs>
@@ -481,15 +481,15 @@ export default function BecomeTutorPage() {
 }
 
 
-function SlotManager({ dayIndex, control }: { dayIndex: number, control: any }) {
-  const { fields, append, remove, update } = useFieldArray({
+function SlotManager({ dayIndex, control, day }: { dayIndex: number, control: any, day: string }) {
+  const { fields, append, remove } = useFieldArray({
     control,
     name: `availableSlots.${dayIndex}.slots`
   });
 
   return (
     <div className="space-y-4 p-4 border rounded-lg">
-      <h3 className="font-semibold">{control.getValues(`availableSlots.${dayIndex}.day`)}</h3>
+      <h3 className="font-semibold">{day}</h3>
       {fields.map((slot, slotIndex) => (
         <div key={slot.id} className="flex flex-col md:flex-row gap-4 items-center border-b pb-4">
            <FormField
