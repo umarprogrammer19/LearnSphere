@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
@@ -60,10 +61,10 @@ export default function CheckoutPage() {
         if (userData) {
             form.reset({
                 name: `${userData.firstName} ${userData.lastName}`,
-                address: userData.address || '',
+                address: (userData as any).address || '',
                 city: userData.city || '',
                 country: userData.country || 'Pakistan',
-                postalCode: userData.postalCode || '',
+                postalCode: (userData as any).postalCode || '',
                 paymentMethod: 'stripe',
             })
         }
