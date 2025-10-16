@@ -22,6 +22,8 @@ import {
   Package,
   Bot,
   BrainCircuit,
+  Book,
+  Store,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -43,7 +45,9 @@ import { Logo } from "./logo";
 const studentNavItems = [
   { label: "Dashboard", href: "/dashboard", icon: Home },
   { label: "Find a Teacher", href: "/find-tutor", icon: Search },
-  { label: "Bookings", href: "/bookings", icon: LineChart },
+  { label: "Books", href: "/books", icon: Book },
+  { label: "My Orders", href: "/orders", icon: Package },
+  { label: "My Bookings", href: "/bookings", icon: LineChart },
 ];
 
 const teacherNavItems = [
@@ -51,13 +55,20 @@ const teacherNavItems = [
     { label: "Bookings", href: "/bookings", icon: LineChart },
 ];
 
+const shopOwnerNavItems = [
+  { label: "My Books", href: "/shop-owner/books", icon: Book },
+  { label: "My Orders", href: "/orders", icon: Package },
+]
+
 const adminNavItems = [
   { label: "Overview", href: "/admin-dashboard", icon: Home },
   { label: "Students", href: "/admin-dashboard/students", icon: Users },
   { label: "Teachers", href: "/admin-dashboard/teachers", icon: BookUser },
-  { label: "Shop Owners", href: "/admin-dashboard/shops", icon: ShoppingBag },
+  { label: "Shop Owners", href: "/admin-dashboard/shops", icon: Store },
   { label: "Bookings", href: "/bookings", icon: LineChart },
   { label: "Applications", href: "/admin-dashboard/applications", icon: Package },
+  { label: "All Books", href: "/admin/books", icon: Book },
+  { label: "All Orders", href: "/orders", icon: Package },
 ];
 
 const aiNavItems = [
@@ -88,6 +99,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       switch(userData?.role) {
           case 'admin': return adminNavItems;
           case 'teacher': return teacherNavItems;
+          case 'shop_owner': return shopOwnerNavItems;
           default: return studentNavItems;
       }
   }
