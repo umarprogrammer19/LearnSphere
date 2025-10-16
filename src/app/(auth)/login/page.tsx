@@ -7,14 +7,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Form,
@@ -76,12 +68,10 @@ export default function LoginPage() {
         toast({ title: "Login Successful" });
         redirectToDashboard(userData.role);
       } else {
-         // Fallback if doc doesn't exist for some reason
         toast({ title: "Login Successful" });
         router.push("/");
       }
   }
-
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
@@ -140,18 +130,15 @@ export default function LoginPage() {
   }
 
   return (
-    <Card className="w-full max-w-md shadow-lg rounded-xl">
-      <CardHeader className="space-y-1 text-center">
-        <CardTitle className="text-3xl font-bold font-headline">
-          Welcome Back
-        </CardTitle>
-        <CardDescription>
-          Enter your credentials to access your account
-        </CardDescription>
-      </CardHeader>
+    <div className="w-full">
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold font-headline tracking-tight">Welcome Back</h1>
+        <p className="text-muted-foreground">Enter your credentials to access your account</p>
+      </div>
+
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          <CardContent className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <div className="space-y-4">
             <FormField
               control={form.control}
               name="email"
@@ -162,7 +149,8 @@ export default function LoginPage() {
                     <Input
                       placeholder="email@example.com"
                       {...field}
-                      disabled={isLoading}
+                      disabled={isLoading || !!isProviderLoading}
+                      className="h-12 rounded-xl"
                     />
                   </FormControl>
                   <FormMessage />
@@ -178,68 +166,70 @@ export default function LoginPage() {
                     <FormLabel>Password</FormLabel>
                     <Link
                       href="/forgot-password"
-                      className="ml-auto inline-block text-sm underline"
+                      className="ml-auto inline-block text-sm text-primary hover:underline"
                     >
-                      Forgot your password?
+                      Forgot password?
                     </Link>
                   </div>
                   <FormControl>
-                    <Input type="password" {...field} disabled={isLoading} />
+                    <Input type="password" {...field} disabled={isLoading || !!isProviderLoading} className="h-12 rounded-xl" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full rounded-xl" disabled={isLoading}>
-              {isLoading ? <Loader2 className="animate-spin" /> : "Login"}
+          </div>
+          <Button type="submit" className="w-full h-12 rounded-xl text-base" disabled={isLoading || !!isProviderLoading}>
+            {isLoading ? <Loader2 className="animate-spin" /> : "Login"}
+          </Button>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                Or continue with
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Button
+              variant="outline"
+              className="h-12 rounded-xl text-base"
+              onClick={() => handleProviderSignIn("google")}
+              disabled={isLoading || !!isProviderLoading}
+            >
+              {isProviderLoading === "google" ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <FcGoogle className="mr-2 h-5 w-5" />
+              )}
+              Google
             </Button>
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">
-                  Or continue with
-                </span>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <Button
-                variant="outline"
-                className="rounded-xl"
-                onClick={() => handleProviderSignIn("google")}
-                disabled={!!isProviderLoading}
-              >
-                {isProviderLoading === "google" ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <FcGoogle className="mr-2 h-4 w-4" />
-                )}
-                Google
-              </Button>
-              <Button
-                variant="outline"
-                className="rounded-xl"
-                onClick={() => handleProviderSignIn("microsoft")}
-                disabled={!!isProviderLoading}
-              >
-                {isProviderLoading === "microsoft" ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <FaMicrosoft className="mr-2 h-4 w-4" />
-                )}
-                Microsoft
-              </Button>
-            </div>
-          </CardContent>
+            <Button
+              variant="outline"
+              className="h-12 rounded-xl text-base"
+              onClick={() => handleProviderSignIn("microsoft")}
+              disabled={isLoading || !!isProviderLoading}
+            >
+              {isProviderLoading === "microsoft" ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <FaMicrosoft className="mr-2 h-5 w-5 text-[#00A4EF]" />
+              )}
+              Microsoft
+            </Button>
+          </div>
         </form>
       </Form>
-      <CardFooter className="text-center text-sm">
+      <p className="mt-8 text-center text-sm text-muted-foreground">
         Don&apos;t have an account?{" "}
-        <Link href="/signup" className="underline ml-1">
+        <Link href="/signup" className="font-semibold text-primary hover:underline">
           Sign up
         </Link>
-      </CardFooter>
-    </Card>
+      </p>
+    </div>
   );
 }

@@ -9,36 +9,36 @@ body {
 @layer base {
   :root {
     --background: 220 40% 98%; /* #F8FAFC */
-    --foreground: 224 71% 4%;
-    --card: 210 40% 100%;
-    --card-foreground: 224 71% 4%;
-    --popover: 210 40% 100%;
-    --popover-foreground: 224 71% 4%;
+    --foreground: 222 47% 11%; /* #1E293B */
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
     --primary: 228 91% 62%; /* #4A6CF7 */
     --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 91%;
-    --secondary-foreground: 224 71% 4%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215 20% 65%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 220 9% 96%;
+    --muted-foreground: 220 9% 45%; /* #64748B */
     --accent: 44 98% 65%; /* #FFCE4E */
-    --accent-foreground: 45 100% 15%;
+    --accent-foreground: 24 9.8% 10%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
     --ring: 228 91% 62%;
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    --radius: 0.75rem;
+    --radius: 1rem; /* 16px */
 
     /* Custom Sidebar Colors */
     --sidebar-background: 240 10% 3.9%; /* A dark color for the sidebar */
     --sidebar-foreground: 210 40% 98%; /* Light text for the sidebar */
     --sidebar-muted-foreground: 215 20% 65%;
-    --sidebar-active: var(--primary); /* Active link background - a green color */
+    --sidebar-active: var(--primary); /* Active link background */
     --sidebar-active-foreground: var(--primary-foreground);
     --sidebar-hover: 240 4% 15%; /* Hover state background */
   }
@@ -83,6 +83,7 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 }
 

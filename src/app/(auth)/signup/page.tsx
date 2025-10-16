@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -13,14 +12,6 @@ import { Calendar as CalendarIcon, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -59,7 +50,7 @@ const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }),
   password: z
     .string()
-    .min(6, { message: "Password must be at least 6 characters." }),
+    .min(8, { message: "Password must be at least 8 characters." }),
   phone: z.string().regex(/^\+92\d{10}$/, { message: "Phone number must be in the format +923XXXXXXXXX." }),
   dob: z.date({
     required_error: "Date of birth is required.",
@@ -83,8 +74,9 @@ export default function SignupPage() {
       lastName: "",
       email: "",
       password: "",
-      phone: "",
+      phone: "+92",
       city: "",
+      country: "pakistan",
     },
   });
 
@@ -142,18 +134,14 @@ export default function SignupPage() {
 
   return (
     <>
-    <Card className="w-full max-w-2xl shadow-lg rounded-xl">
-      <CardHeader className="text-center">
-        <CardTitle className="text-3xl font-bold font-headline">
-          Create an Account
-        </CardTitle>
-        <CardDescription>
-          Join LearnSphere today! It&apos;s free and only takes a minute.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+      <div className="w-full">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold font-headline tracking-tight">Create an Account</h1>
+          <p className="text-muted-foreground">Join LearnSphere today! It's free and only takes a minute.</p>
+        </div>
+        
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -163,9 +151,10 @@ export default function SignupPage() {
                     <FormLabel>First Name</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Your First Name"
+                        placeholder="John"
                         {...field}
                         disabled={isLoading}
+                        className="h-12 rounded-xl"
                       />
                     </FormControl>
                     <FormMessage />
@@ -180,9 +169,10 @@ export default function SignupPage() {
                     <FormLabel>Last Name</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Your Last Name"
+                        placeholder="Doe"
                         {...field}
                         disabled={isLoading}
+                        className="h-12 rounded-xl"
                       />
                     </FormControl>
                     <FormMessage />
@@ -203,6 +193,7 @@ export default function SignupPage() {
                       placeholder="email@example.com"
                       {...field}
                       disabled={isLoading}
+                      className="h-12 rounded-xl"
                     />
                   </FormControl>
                   <FormMessage />
@@ -222,13 +213,13 @@ export default function SignupPage() {
                       placeholder="••••••••"
                       {...field}
                       disabled={isLoading}
+                      className="h-12 rounded-xl"
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
 
             <FormField
               control={form.control}
@@ -242,6 +233,7 @@ export default function SignupPage() {
                       placeholder="+923001234567"
                       {...field}
                       disabled={isLoading}
+                      className="h-12 rounded-xl"
                     />
                   </FormControl>
                   <FormMessage />
@@ -262,7 +254,7 @@ export default function SignupPage() {
                           <Button
                             variant={"outline"}
                             className={cn(
-                              "w-full justify-start text-left font-normal rounded-xl",
+                              "w-full justify-start text-left font-normal h-12 rounded-xl",
                               !field.value && "text-muted-foreground"
                             )}
                             disabled={isLoading}
@@ -306,6 +298,7 @@ export default function SignupPage() {
                         placeholder="Karachi"
                         {...field}
                         disabled={isLoading}
+                        className="h-12 rounded-xl"
                       />
                     </FormControl>
                     <FormMessage />
@@ -326,7 +319,7 @@ export default function SignupPage() {
                     disabled={isLoading}
                   >
                     <FormControl>
-                      <SelectTrigger className="rounded-xl">
+                      <SelectTrigger className="h-12 rounded-xl">
                         <SelectValue placeholder="Select your country" />
                       </SelectTrigger>
                     </FormControl>
@@ -342,38 +335,38 @@ export default function SignupPage() {
               )}
             />
 
-            <Button type="submit" className="w-full rounded-xl" disabled={isLoading}>
+            <Button type="submit" className="w-full h-12 rounded-xl text-base" disabled={isLoading}>
               {isLoading ? (
                 <Loader2 className="animate-spin" />
               ) : (
-                "Sign Up"
+                "Create Account"
               )}
             </Button>
           </form>
         </Form>
-      </CardContent>
-      <CardFooter className="text-center text-sm">
-        Already have an account?{" "}
-        <Link href="/login" className="underline ml-1">
-          Login
-        </Link>
-      </CardFooter>
-    </Card>
-    <Dialog open={showVerificationDialog} onOpenChange={handleDialogClose}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Verify Your Email</DialogTitle>
-            <DialogDescription>
-              A verification email has been sent to your address. Please check your inbox and click the link to activate your account before logging in.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button onClick={handleDialogClose}>
-              Got It
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        <p className="mt-8 text-center text-sm text-muted-foreground">
+          Already have an account?{" "}
+          <Link href="/login" className="font-semibold text-primary hover:underline">
+            Login
+          </Link>
+        </p>
+      </div>
+
+      <Dialog open={showVerificationDialog} onOpenChange={handleDialogClose}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-headline">Verify Your Email</DialogTitle>
+              <DialogDescription className="pt-2">
+                A verification link has been sent to your email address. Please check your inbox and click the link to activate your account.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button onClick={handleDialogClose} className="w-full rounded-xl">
+                Got It
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
     </>
   );
 }
