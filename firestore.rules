@@ -1,54 +1,42 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if a user has a specific role
-    function hasRole(role) {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    // Helper function to check if the user is an admin.
+    function isAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Helper function to check if a user is the owner of the data
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    // Rules for the 'users' collection
+    // Users can read and write their own profile.
+    // Admins can read any user profile for management purposes.
     match /users/{userId} {
-      // Allow create for any authenticated user (during signup)
-      allow create: if request.auth != null;
-
-      // Allow read for the owner, or any admin
-      allow read: if isOwner(userId) || hasRole('admin');
-
-      // Allow update only for the owner or an admin
-      // Ensure role changes are only made by admins
-      allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role) || hasRole('admin');
-
-      // Allow delete only for admins
-      allow delete: if hasRole('admin');
+      allow read: if request.auth.uid == userId || isAdmin();
+      allow write: if request.auth.uid == userId;
     }
 
-    // Rules for the 'bookings' collection
+    // Rules for the Bookings collection
     match /bookings/{bookingId} {
-      // Allow create for any authenticated user (students making bookings)
+      // Allow create if user is authenticated (student creating a booking).
       allow create: if request.auth != null;
 
-      // Students can read their own bookings
-      // Teachers can read bookings made for them
-      // Admins can read all bookings
-      allow read: if (request.auth != null && (resource.data.studentId == request.auth.uid || resource.data.tutorId == request.auth.uid)) || hasRole('admin');
+      // Allow read if user is the student, the tutor for the booking, or an admin.
+      allow read: if request.auth.uid == resource.data.studentId 
+                   || request.auth.uid == resource.data.tutorId
+                   || isAdmin();
 
-      // Allow update for the student who booked it (e.g., to cancel), the tutor (to confirm/reject), or an admin
-      allow update: if (request.auth != null && (resource.data.studentId == request.auth.uid || resource.data.tutorId == request.auth.uid)) || hasRole('admin');
+      // Allow update if user is the tutor (to confirm/reject) or an admin.
+      allow update: if request.auth.uid == resource.data.tutorId || isAdmin();
       
-      // Allow delete for the student or an admin
-      allow delete: if (request.auth != null && resource.data.studentId == request.auth.uid) || hasRole('admin');
+      // Deletion should be restricted, perhaps only to admins or not at all.
+      allow delete: if isAdmin();
     }
-
-    // Default deny all other reads/writes
-    match /{document=**} {
-      allow read, write: if false;
+    
+    // Admins can list all users for the dashboard.
+    // Students/Teachers cannot list all users.
+    match /users/{userId} {
+       allow list: if isAdmin();
     }
   }
 }
