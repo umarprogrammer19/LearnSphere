@@ -20,9 +20,14 @@ export async function saveChatHistory(userId: string, messages: Message[]) {
     for (const message of messages) {
         if (message.role === 'user' || message.role === 'model') {
              try {
+                // Ensure content is an array of parts and extract text
+                const contentText = message.content
+                    .map(part => part.text)
+                    .join('');
+
                 await historyRef.add({
                     role: message.role,
-                    content: message.content, 
+                    content: contentText, // Save the combined text content
                     timestamp: new Date(),
                 });
             } catch (e) {

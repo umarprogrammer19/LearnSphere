@@ -26,5 +26,15 @@ export async function POST(req: Request) {
     data.close();
   });
   
-  return new StreamingTextResponse(stream, {}, data);
+  // Convert Genkit stream to a format readable by StreamingTextResponse
+  const readableStream = new ReadableStream({
+    async start(controller) {
+      for await (const chunk of stream) {
+        controller.enqueue(chunk.text);
+      }
+      controller.close();
+    },
+  });
+
+  return new StreamingTextResponse(readableStream, {}, data);
 }
