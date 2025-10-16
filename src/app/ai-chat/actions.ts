@@ -7,6 +7,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { app } from '@/firebase/admin-config';
 import { Message } from 'genkit/generate';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 
 if (process.env.NODE_ENV === 'production') {
     configureGenkit({
