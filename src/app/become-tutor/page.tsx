@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -44,19 +45,19 @@ import { GoogleMap } from "@/components/google-map";
 const { firestore } = initializeFirebase();
 
 const timeSlots = Array.from({ length: 24 }, (_, i) => {
-    const hour = i.toString().padStart(2, '0');
-    return `${hour}:00`;
+  const hour = i.toString().padStart(2, '0');
+  return `${hour}:00`;
 });
 
 const availableSlotsSchema = z.array(z.object({
-    day: z.string(),
-    slots: z.array(z.object({
-        startTime: z.string(),
-        endTime: z.string(),
-    }))
+  day: z.string(),
+  slots: z.array(z.object({
+    startTime: z.string(),
+    endTime: z.string(),
+  }))
 })).min(1, "Please select at least one available time slot.").refine(
-    (days) => days.some(day => day.slots.length > 0),
-    { message: "Please select at least one available time slot." }
+  (days) => days.some(day => day.slots.length > 0),
+  { message: "Please select at least one available time slot." }
 );
 
 const subjects = [
@@ -84,7 +85,7 @@ const tutorFormSchema = z.object({
     "student_home",
     "online",
     "center",
-  ], { required_error: "Preferred location is required."}),
+  ], { required_error: "Preferred location is required." }),
   availableSlots: availableSlotsSchema,
   teachingSubjects: z.array(z.string()).min(1, "Please select at least one subject."),
   hourlyPricing: z.coerce.number().min(1, "Pricing must be a positive number."),
@@ -117,7 +118,7 @@ export default function BecomeTutorPage() {
       hourlyPricing: 0,
     },
   });
-  
+
   useEffect(() => {
     if (userData) {
       tutorForm.reset({
@@ -135,13 +136,13 @@ export default function BecomeTutorPage() {
         setCurrentLocation(loc);
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userData]);
 
 
   const { fields } = useFieldArray({
-      control: tutorForm.control,
-      name: "availableSlots"
+    control: tutorForm.control,
+    name: "availableSlots"
   });
 
   useEffect(() => {
@@ -149,7 +150,7 @@ export default function BecomeTutorPage() {
       toast({ title: "Please log in", description: "You need to be logged in to become a tutor.", variant: "destructive" });
       router.push("/login");
     }
-     if (!isUserLoading && userData && !userData.isProfileCompleted) {
+    if (!isUserLoading && userData && !userData.isProfileCompleted) {
       toast({
         title: "Profile Incomplete",
         description: "Please complete your profile before applying to be a tutor.",
@@ -158,7 +159,7 @@ export default function BecomeTutorPage() {
       router.push("/profile");
     }
   }, [user, userData, isUserLoading, router, toast]);
-  
+
   const handleDegreeFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       setDegreeFiles(prev => [...prev, ...Array.from(e.target.files as FileList)]);
@@ -191,18 +192,18 @@ export default function BecomeTutorPage() {
       if (phoneNumber && !phoneNumber.startsWith('+92')) {
         phoneNumber = `+92${phoneNumber.replace(/^0/, '')}`;
       } else if (!phoneNumber) {
-          toast({variant: "destructive", title: "Missing Phone Number", description: "Please add a phone number to your profile first."})
-          router.push('/profile');
-          return;
+        toast({ variant: "destructive", title: "Missing Phone Number", description: "Please add a phone number to your profile first." })
+        router.push('/profile');
+        return;
       }
-      
+
       router.push(`/verify-otp?phone=${encodeURIComponent(phoneNumber)}`);
       return;
     }
 
     if (degreeFiles.length === 0 && (!userData.degreeScreenshots || userData.degreeScreenshots.length === 0)) {
-        toast({ variant: "destructive", title: "Missing Documents", description: "Please upload your degree screenshots." });
-        return;
+      toast({ variant: "destructive", title: "Missing Documents", description: "Please upload your degree screenshots." });
+      return;
     }
 
 
@@ -257,7 +258,7 @@ export default function BecomeTutorPage() {
     setCurrentLocation(location);
     tutorForm.setValue("location", location, { shouldValidate: true });
   };
-  
+
   if (isUserLoading || !userData) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -307,36 +308,36 @@ export default function BecomeTutorPage() {
                     </FormItem>
                   )}
                 />
-                 <FormField
+                <FormField
                   control={tutorForm.control}
                   name="teachingSubjects"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Teaching Subjects</FormLabel>
-                        <Select onValueChange={(value) => !field.value.includes(value) && field.onChange([...field.value, value])} >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select subjects you teach" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {subjects.map(subject => (
-                               <SelectItem key={subject} value={subject} disabled={field.value.includes(subject)}>
-                                {subject}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                            {field.value.map((subject) => (
-                                <div key={subject} className="flex items-center gap-2 bg-muted p-2 rounded-md">
-                                    <span>{subject}</span>
-                                    <button type="button" onClick={() => field.onChange(field.value.filter(s => s !== subject))} className="text-red-500 hover:text-red-700">
-                                        &times;
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
+                      <Select onValueChange={(value) => !field.value.includes(value) && field.onChange([...field.value, value])} >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select subjects you teach" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {subjects.map(subject => (
+                            <SelectItem key={subject} value={subject} disabled={field.value.includes(subject)}>
+                              {subject}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {field.value.map((subject) => (
+                          <div key={subject} className="flex items-center gap-2 bg-muted p-2 rounded-md">
+                            <span>{subject}</span>
+                            <button type="button" onClick={() => field.onChange(field.value.filter(s => s !== subject))} className="text-red-500 hover:text-red-700">
+                              &times;
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -398,7 +399,7 @@ export default function BecomeTutorPage() {
                     </FormItem>
                   )}
                 />
-                 <FormItem>
+                <FormItem>
                   <FormLabel>Degree Screenshots/Transcripts</FormLabel>
                   <FormControl>
                     <Input
@@ -411,7 +412,7 @@ export default function BecomeTutorPage() {
                   </FormControl>
                   <FormDescription>You can upload multiple files.</FormDescription>
                   <div className="flex flex-wrap gap-2 mt-2">
-                    {userData?.degreeScreenshots?.map((url, index) => (
+                    {userData?.degreeScreenshots?.map((url: string, index: number) => (
                       <div key={index} className="relative">
                         <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500 underline">Existing File {index + 1}</a>
                       </div>
@@ -429,67 +430,67 @@ export default function BecomeTutorPage() {
                 </FormItem>
 
                 <div className="space-y-4">
-                    <FormLabel>Your Location (for in-person tutoring)</FormLabel>
-                    <p className="text-sm text-muted-foreground">Click the button to capture your location, or search and drag the pin on the map.</p>
-                     <div className="h-[400px] w-full rounded-lg overflow-hidden border">
-                         <GoogleMap 
-                            onLocationChange={handleMapLocationChange}
-                            initialCenter={currentLocation}
-                            isDraggable={true}
-                         />
-                     </div>
-                      {tutorForm.formState.errors.location && <FormMessage>{tutorForm.formState.errors.location.message}</FormMessage>}
+                  <FormLabel>Your Location (for in-person tutoring)</FormLabel>
+                  <p className="text-sm text-muted-foreground">Click the button to capture your location, or search and drag the pin on the map.</p>
+                  <div className="h-[400px] w-full rounded-lg overflow-hidden border">
+                    <GoogleMap
+                      onLocationChange={handleMapLocationChange}
+                      initialCenter={currentLocation}
+                      isDraggable={true}
+                    />
+                  </div>
+                  {tutorForm.formState.errors.location && <FormMessage>{tutorForm.formState.errors.location.message}</FormMessage>}
                 </div>
 
                 <div className="space-y-4">
                   <FormField
-                      control={tutorForm.control}
-                      name="availableSlots"
-                      render={() => (
-                          <FormItem>
-                              <FormLabel>Available Time Slots</FormLabel>
-                               <FormDescription>Select the hours you are available on each day.</FormDescription>
-                              {fields.map((item, dayIndex) => (
-                                <div key={item.id} className="p-4 border rounded-lg">
-                                  <h3 className="font-semibold">{item.day}</h3>
-                                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 mt-2">
-                                    {timeSlots.map((slot) => {
-                                      const timeRange = `${slot} - ${timeSlots[timeSlots.indexOf(slot) + 1] || "00:00"}`;
-                                      const isChecked = tutorForm.watch(`availableSlots.${dayIndex}.slots`).some(s => s.startTime === slot);
+                    control={tutorForm.control}
+                    name="availableSlots"
+                    render={() => (
+                      <FormItem>
+                        <FormLabel>Available Time Slots</FormLabel>
+                        <FormDescription>Select the hours you are available on each day.</FormDescription>
+                        {fields.map((item, dayIndex) => (
+                          <div key={item.id} className="p-4 border rounded-lg">
+                            <h3 className="font-semibold">{item.day}</h3>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 mt-2">
+                              {timeSlots.map((slot) => {
+                                const timeRange = `${slot} - ${timeSlots[timeSlots.indexOf(slot) + 1] || "00:00"}`;
+                                const isChecked = tutorForm.watch(`availableSlots.${dayIndex}.slots`).some(s => s.startTime === slot);
 
-                                      return (
-                                          <div key={slot} className="flex items-center space-x-2">
-                                              <Checkbox
-                                                  id={`${item.day}-${slot}`}
-                                                  checked={isChecked}
-                                                  onCheckedChange={(checked) => {
-                                                      const currentSlots = tutorForm.getValues(`availableSlots.${dayIndex}.slots`);
-                                                      let newSlots;
-                                                      const nextSlot = timeSlots[timeSlots.indexOf(slot) + 1] || "00:00";
-                                                      
-                                                      if (checked) {
-                                                          newSlots = [...currentSlots, { startTime: slot, endTime: nextSlot }];
-                                                      } else {
-                                                          newSlots = currentSlots.filter(s => s.startTime !== slot);
-                                                      }
+                                return (
+                                  <div key={slot} className="flex items-center space-x-2">
+                                    <Checkbox
+                                      id={`${item.day}-${slot}`}
+                                      checked={isChecked}
+                                      onCheckedChange={(checked) => {
+                                        const currentSlots = tutorForm.getValues(`availableSlots.${dayIndex}.slots`);
+                                        let newSlots;
+                                        const nextSlot = timeSlots[timeSlots.indexOf(slot) + 1] || "00:00";
 
-                                                      const allDays = tutorForm.getValues('availableSlots');
-                                                      allDays[dayIndex].slots = newSlots.sort((a, b) => a.startTime.localeCompare(b.startTime));
-                                                      tutorForm.setValue('availableSlots', allDays, { shouldValidate: true, shouldDirty: true });
-                                                  }}
-                                              />
-                                              <label htmlFor={`${item.day}-${slot}`} className="text-sm font-normal cursor-pointer select-none">
-                                                  {timeRange}
-                                              </label>
-                                          </div>
-                                      )
-                                    })}
+                                        if (checked) {
+                                          newSlots = [...currentSlots, { startTime: slot, endTime: nextSlot }];
+                                        } else {
+                                          newSlots = currentSlots.filter(s => s.startTime !== slot);
+                                        }
+
+                                        const allDays = tutorForm.getValues('availableSlots');
+                                        allDays[dayIndex].slots = newSlots.sort((a, b) => a.startTime.localeCompare(b.startTime));
+                                        tutorForm.setValue('availableSlots', allDays, { shouldValidate: true, shouldDirty: true });
+                                      }}
+                                    />
+                                    <label htmlFor={`${item.day}-${slot}`} className="text-sm font-normal cursor-pointer select-none">
+                                      {timeRange}
+                                    </label>
                                   </div>
-                                </div>
-                              ))}
-                              <FormMessage>{tutorForm.formState.errors.availableSlots?.message || tutorForm.formState.errors.availableSlots?.root?.message}</FormMessage>
-                          </FormItem>
-                      )}
+                                )
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                        <FormMessage>{tutorForm.formState.errors.availableSlots?.message || tutorForm.formState.errors.availableSlots?.root?.message}</FormMessage>
+                      </FormItem>
+                    )}
                   />
                 </div>
 
