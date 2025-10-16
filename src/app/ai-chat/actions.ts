@@ -1,7 +1,8 @@
 
 "use server";
 
-import { Message, Part } from 'genkit';
+import { ai } from '@/ai/genkit';
+import { Message } from 'genkit';
 import { getFirestore } from 'firebase-admin/firestore';
 import { app } from '@/firebase/admin-config';
 
@@ -9,32 +10,39 @@ const firestore = getFirestore(app);
 
 // This is a placeholder for getting the current user's UID.
 async function getCurrentUserUid() {
+    // In a real app, you'd get this from the session or an auth provider.
     return 'some-user-uid-placeholder';
 }
 
-export async function saveChatHistory(userId: string, messages: Message[]) {
-    if (!userId) return;
+export async function chat(prompt: string, history: Message[]): Promise<string> {
 
-    const historyRef = firestore.collection(`users/${userId}/chatHistory`);
+    const result = await ai.generate({
+        messages: [...history, { role: 'user', content: [{ text: prompt }] }],
+    });
 
-    for (const message of messages) {
-        // Ensure content is an array and handle it
-        if (Array.isArray(message.content)) {
-            try {
-                // Extract text from all parts of the content
-                const contentText = message.content
-                    .map(part => part.text || '')
-                    .join('\n');
-                
-                await historyRef.add({
-                    role: message.role,
-                    content: contentText, // Save the combined text content
-                    timestamp: new Date(),
-                });
-            } catch (e) {
-                console.error("Failed to save a chat message to history:", e);
-                // Decide if you want to stop or continue
-            }
+    const response = result.text;
+
+    // Save to Firestore - don't await to avoid blocking response
+    try {
+        const userUid = await getCurrentUserUid();
+        if (userUid) {
+            const historyRef = firestore.collection(`users/${userUid}/chatHistory`);
+            // Save user prompt
+            await historyRef.add({
+                role: 'user',
+                content: prompt,
+                timestamp: new Date(),
+            });
+            // Save model response
+            await historyRef.add({
+                role: 'model',
+                content: response,
+                timestamp: new Date(),
+            });
         }
+    } catch (e) {
+        console.error("Failed to save chat history:", e);
     }
+
+    return response;
 }
