@@ -22,8 +22,7 @@ async function getCurrentUserUid() {
 export async function chat(prompt: string, history: Message[]) {
     
     const result = await ai.generate({
-        prompt: prompt,
-        history: history,
+        messages: [...history, { role: 'user', content: [{ text: prompt }] }],
     });
 
     const response = result.text;
