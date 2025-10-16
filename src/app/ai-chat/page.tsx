@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Loader2, Bot, User, Send } from 'lucide-react';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
@@ -77,7 +77,7 @@ export default function AiChatPage() {
                     </div>
                     {m.role === 'user' && userData && (
                       <Avatar className="w-8 h-8">
-                        <AvatarImage src={userData.profileImageUrl} />
+                        {userData.profileImageUrl && <AvatarImage src={userData.profileImageUrl} />}
                         <AvatarFallback><User className="w-5 h-5"/></AvatarFallback>
                       </Avatar>
                     )}
