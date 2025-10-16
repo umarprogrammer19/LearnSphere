@@ -52,7 +52,7 @@ export interface InternalQuery extends Query<DocumentData> {
  * @returns {UseCollectionResult<T>} Object with data, isLoading, error.
  */
 export function useCollection<T = any>(
-    memoizedTargetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>) & {__memo?: boolean})  | null | undefined,
+  memoizedTargetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>) & { __memo?: boolean }) | null | undefined,
 ): UseCollectionResult<T> {
   type ResultItemType = WithId<T>;
   type StateDataType = ResultItemType[] | null;
@@ -84,30 +84,56 @@ export function useCollection<T = any>(
         setError(null);
         setIsLoading(false);
       },
+      // --- inside your onSnapshot error callback, replace with this ---
       (error: FirestoreError) => {
-        // This logic extracts the path from either a ref or a query
-        const path: string =
-          memoizedTargetRefOrQuery.type === 'collection'
-            ? (memoizedTargetRefOrQuery as CollectionReference).path
-            : (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.path.canonicalString()
+        // best-effort path extraction without assuming exact query shape
+        let path = '<unknown>';
+        try {
+          const target = memoizedTargetRefOrQuery as any;
+          if (!target) {
+            path = '<null>';
+          } else if (typeof target.path === 'string') {
+            // CollectionReference: .path is a string
+            path = target.path;
+          } else if (target._query && typeof target._query.path?.canonicalString === 'function') {
+            // InternalQuery shape
+            path = target._query.path.canonicalString();
+          } else if (target._query && typeof target._query.path?.toString === 'function') {
+            path = target._query.path.toString();
+          } else if (target.query && typeof target.query.path === 'string') {
+            path = target.query.path;
+          } else {
+            path = String(target.constructor?.name || '<unknown-target>');
+          }
+        } catch (e) {
+          // ignore extraction errors, keep path as '<unknown>'
+          // but log to console for debugging
+          console.warn('Failed to extract path from query/ref', e);
+        }
 
+        // include the original Firestore error as the cause
         const contextualError = new FirestorePermissionError({
           operation: 'list',
           path,
-        })
+          message: `Permission denied while listing ${path}: ${error?.message ?? 'unknown'}`,
+          cause: error,
+        });
 
-        setError(contextualError)
-        setData(null)
-        setIsLoading(false)
+        // keep local state useful
+        setError(contextualError);
+        setData(null);
+        setIsLoading(false);
 
-        // trigger global error propagation
+        // emit for global handling + log original for debugging
         errorEmitter.emit('permission-error', contextualError);
+        console.error('Firestore list permission/error:', { path, originalError: error });
       }
+
     );
 
     return () => unsubscribe();
   }, [memoizedTargetRefOrQuery]); // Re-run if the target query/reference changes.
-  if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
+  if (memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
     throw new Error(memoizedTargetRefOrQuery + ' was not properly memoized using useMemoFirebase');
   }
   return { data, isLoading, error };

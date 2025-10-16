@@ -111,13 +111,27 @@ ${JSON.stringify(requestObject, null, 2)}`;
  * It structures the error information to mimic the request object
  * available in Firestore Security Rules.
  */
-export class FirestorePermissionError extends Error {
-  public readonly request: SecurityRuleRequest;
 
-  constructor(context: SecurityRuleContext) {
-    const requestObject = buildRequestObject(context);
-    super(buildErrorMessage(requestObject));
-    this.name = 'FirebaseError';
-    this.request = requestObject;
+export interface FirestorePermissionErrorOptions {
+  operation: string;
+  path: string;
+  message?: string;
+  cause?: Error;
+}
+export class FirestorePermissionError extends Error {
+  operation: string;
+  path: string;
+  cause?: Error;
+
+  constructor(opts: FirestorePermissionErrorOptions) {
+    // set a friendly default message if none provided
+    super(opts.message ?? `Permission denied while ${opts.operation} ${opts.path}`);
+    this.name = 'FirestorePermissionError';
+    this.operation = opts.operation;
+    this.path = opts.path;
+    this.cause = opts.cause;
+
+    // maintain instanceof behavior across ES targets
+    Object.setPrototypeOf(this, FirestorePermissionError.prototype);
   }
 }
