@@ -1,25 +1,10 @@
+
 "use server";
 
-import { genkit, configureGenkit } from 'genkit';
-import { googleAI } from '@genkit-ai/google-genai';
+import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore, serverTimestamp, collection, addDoc } from 'firebase-admin/firestore';
+import { getFirestore } from 'firebase-admin/firestore';
 import { app } from '@/firebase/admin-config';
-
-if (process.env.NODE_ENV === 'production') {
-    configureGenkit({
-        plugins: [googleAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY })],
-        logLevel: "warn",
-        enableTracingAndMetrics: true,
-    });
-} else {
-     configureGenkit({
-        plugins: [googleAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY })],
-        logLevel: "debug",
-        enableTracingAndMetrics: true,
-    });
-}
 
 const firestore = getFirestore(app);
 
@@ -38,13 +23,16 @@ const QuizOutputSchema = z.object({
     }))
 });
 
+// This is a placeholder for getting the current user's UID.
+async function getCurrentUserUid() {
+    return 'some-user-uid-placeholder';
+}
+
+
 export async function generateQuiz(input: z.infer<typeof QuizInputSchema>) {
     const prompt = `Generate a 5-question multiple-choice quiz for a student named ${input.name} in grade ${input.grade} of the ${input.board} board, for the subject ${input.subject}. For each question, provide 4 options and clearly indicate the correct answer.`;
     
-    const llm = googleAI.model('gemini-2.5-flash');
-
-    const result = await genkit.generate({
-        model: llm,
+    const result = await ai.generate({
         prompt: prompt,
         output: {
             schema: QuizOutputSchema,
@@ -53,17 +41,19 @@ export async function generateQuiz(input: z.infer<typeof QuizInputSchema>) {
 
     const quizData = result.output();
 
+    if (!quizData) {
+        throw new Error("Failed to generate quiz data from the AI model.");
+    }
+
     // Save quiz to Firestore - don't await
     try {
-        const auth = getAuth(app);
-        // Placeholder for user UID
-        const userUid = 'some-user-uid-placeholder';
-        if(userUid && quizData) {
-            const quizHistoryRef = collection(firestore, `users/${userUid}/quizHistory`);
-            await addDoc(quizHistoryRef, {
+        const userUid = await getCurrentUserUid();
+        if(userUid) {
+            const quizHistoryRef = firestore.collection(`users/${userUid}/quizHistory`);
+            await quizHistoryRef.add({
                 ...input,
                 quiz: quizData,
-                createdAt: serverTimestamp(),
+                createdAt: new Date(),
             });
         }
     } catch(e) {

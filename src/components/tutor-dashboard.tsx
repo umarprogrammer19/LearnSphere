@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useUser } from "@/hooks/use-user";
@@ -26,7 +27,6 @@ import { collection, query, where, doc, updateDoc } from "firebase/firestore";
 import { initializeFirebase, useMemoFirebase } from "@/firebase";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { setDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { serverTimestamp } from "firebase/firestore";
 
 const { firestore } = initializeFirebase();
@@ -46,8 +46,10 @@ export function TutorDashboard() {
     const { data: bookingRequests, isLoading } = useCollection<any>(bookingsQuery);
 
     const handleBookingAction = async (booking: any, confirm: boolean) => {
+        if (!user || !userData) return;
+        
         const bookingRef = doc(firestore, "bookings", booking.id);
-        const userRef = doc(firestore, "users", user!.uid);
+        const userRef = doc(firestore, "users", user.uid);
 
         try {
             await updateDoc(bookingRef, {

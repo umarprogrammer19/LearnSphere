@@ -32,12 +32,10 @@ export default function BookingsPage() {
   const bookingsQuery = useMemoFirebase(() => {
     if (!user || !userData) return null;
     
-    // Admin can see all bookings, sorted by creation date.
     if (userData.role === "admin") {
-      return query(collection(firestore, "bookings"), orderBy("createdAt", "desc"));
+      return query(collection(firestore, "bookings"));
     }
     
-    // For students and teachers, we build a simpler query to avoid needing a composite index.
     if (userData.role === "student") {
       return query(collection(firestore, "bookings"), where("studentId", "==", user.uid));
     } 
@@ -46,7 +44,7 @@ export default function BookingsPage() {
       return query(collection(firestore, "bookings"), where("tutorId", "==", user.uid));
     }
 
-    return null; // Return null if no role matches
+    return null;
   }, [user, userData]);
 
   const { data: bookings, isLoading: isLoadingBookings } = useCollection<any>(bookingsQuery);

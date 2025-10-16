@@ -1,36 +1,27 @@
+
 "use server";
 
-import { genkit, configureGenkit } from 'genkit';
-import { googleAI } from '@genkit-ai/google-genai';
+import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { app } from '@/firebase/admin-config';
 import { Message } from 'genkit/generate';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-
-if (process.env.NODE_ENV === 'production') {
-    configureGenkit({
-        plugins: [googleAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY })],
-        logLevel: "warn",
-        enableTracingAndMetrics: true,
-    });
-} else {
-     configureGenkit({
-        plugins: [googleAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY })],
-        logLevel: "debug",
-        enableTracingAndMetrics: true,
-    });
-}
 
 const firestore = getFirestore(app);
 
+// This is a placeholder for getting the current user's UID.
+// In a real app, you would get this from the session/auth context.
+// For this example, we'll assume a function that can provide it.
+async function getCurrentUserUid() {
+    // In a real scenario, you'd use something like `next-auth` or Firebase Admin Auth
+    // to verify a session token and get the UID.
+    return 'some-user-uid-placeholder';
+}
+
+
 export async function chat(prompt: string, history: Message[]) {
     
-    const llm = googleAI.model('gemini-2.5-flash');
-
-    const result = await genkit.generate({
-        model: llm,
+    const result = await ai.generate({
         prompt: prompt,
         history: history,
     });
@@ -39,21 +30,18 @@ export async function chat(prompt: string, history: Message[]) {
 
     // Save to Firestore - don't await to avoid blocking response
     try {
-        const auth = getAuth(app);
-        // This is a placeholder for getting the current user's UID.
-        // In a real app, you would get this from the session/auth context.
-        const userUid = 'some-user-uid-placeholder';
+        const userUid = await getCurrentUserUid();
         if (userUid) {
-            const historyRef = collection(firestore, `users/${userUid}/chatHistory`);
-            await addDoc(historyRef, {
+            const historyRef = firestore.collection(`users/${userUid}/chatHistory`);
+            await historyRef.add({
                 role: 'user',
                 content: prompt,
-                timestamp: serverTimestamp(),
+                timestamp: new Date(),
             });
-            await addDoc(historyRef, {
+            await historyRef.add({
                 role: 'model',
                 content: response,
-                timestamp: serverTimestamp(),
+                timestamp: new Date(),
             });
         }
     } catch (e) {
