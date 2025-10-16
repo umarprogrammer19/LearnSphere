@@ -31,7 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, MapPin } from "lucide-react";
+import { Loader2, MapPin, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -87,7 +87,7 @@ const tutorFormSchema = z.object({
   ], { required_error: "Preferred location is required."}),
   availableSlots: availableSlotsSchema,
   teachingSubjects: z.array(z.string()).min(1, "Please select at least one subject."),
-  hourlyPricing: z.coerce.number().min(0, "Pricing must be a positive number."),
+  hourlyPricing: z.coerce.number().min(1, "Pricing must be a positive number."),
   location: z.object({
     lat: z.number(),
     lng: z.number(),
@@ -100,8 +100,7 @@ export default function BecomeTutorPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [degreeFiles, setDegreeFiles] = useState<FileList | null>(null);
-  const [isLocationLoading, setIsLocationLoading] = useState(false);
+  const [degreeFiles, setDegreeFiles] = useState<File[]>([]);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | undefined>(undefined);
 
 
@@ -116,15 +115,25 @@ export default function BecomeTutorPage() {
       availableSlots: daysOfWeek.map(day => ({ day, slots: [] })),
       teachingSubjects: [],
       hourlyPricing: 0,
-      location: userData?.location ? { lat: userData.location.latitude, lng: userData.location.longitude } : undefined,
     },
   });
   
   useEffect(() => {
-    if (userData?.location?.latitude) {
-      const loc = { lat: userData.location.latitude, lng: userData.location.longitude };
-      setCurrentLocation(loc);
-      tutorForm.setValue("location", loc);
+    if (userData) {
+      tutorForm.reset({
+        CNIC: userData.CNIC || "",
+        qualification: userData.qualification || "",
+        teachingSubjects: userData.teachingSubjects || [],
+        hourlyPricing: userData.hourlyPricing || 0,
+        availableSlots: userData.availableSlots && userData.availableSlots.length > 0 ? userData.availableSlots : daysOfWeek.map(day => ({ day, slots: [] })),
+        locationType: userData.locationType,
+        location: userData.location ? { lat: userData.location.latitude, lng: userData.location.longitude } : undefined,
+      });
+
+      if (userData.location?.latitude) {
+        const loc = { lat: userData.location.latitude, lng: userData.location.longitude };
+        setCurrentLocation(loc);
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userData]);
@@ -137,6 +146,7 @@ export default function BecomeTutorPage() {
 
   useEffect(() => {
     if (!isUserLoading && !user) {
+      toast({ title: "Please log in", description: "You need to be logged in to become a tutor.", variant: "destructive" });
       router.push("/login");
     }
      if (!isUserLoading && userData && !userData.isProfileCompleted) {
@@ -150,8 +160,15 @@ export default function BecomeTutorPage() {
   }, [user, userData, isUserLoading, router, toast]);
   
   const handleDegreeFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setDegreeFiles(e.target.files);
+    if (e.target.files) {
+      setDegreeFiles(prev => [...prev, ...Array.from(e.target.files as FileList)]);
+    }
   };
+
+  const removeDegreeFile = (index: number) => {
+    setDegreeFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
 
   const uploadFile = async (file: File, path: string): Promise<string> => {
     const storageRef = ref(storage, path);
@@ -183,7 +200,7 @@ export default function BecomeTutorPage() {
       return;
     }
 
-    if (!degreeFiles || degreeFiles.length === 0) {
+    if (degreeFiles.length === 0 && (!userData.degreeScreenshots || userData.degreeScreenshots.length === 0)) {
         toast({ variant: "destructive", title: "Missing Documents", description: "Please upload your degree screenshots." });
         return;
     }
@@ -191,25 +208,30 @@ export default function BecomeTutorPage() {
 
     setIsSubmitting(true);
     try {
-      const degreeUrls = [];
-      if (degreeFiles) {
-        for (let i = 0; i < degreeFiles.length; i++) {
-          const file = degreeFiles[i];
-          const url = await uploadFile(
-            file,
-            `degree-screenshots/${user.uid}/${file.name}`
-          );
-          degreeUrls.push(url);
-        }
+      // Logic for uploading only new files.
+      const newDegreeUrls = [];
+      for (const file of degreeFiles) {
+        // A simple check to see if the file is new. In a real app, you might check against existing URLs.
+        const url = await uploadFile(
+          file,
+          `degree-screenshots/${user.uid}/${Date.now()}-${file.name}`
+        );
+        newDegreeUrls.push(url);
       }
+
+      // Combine old URLs with new ones.
+      const allDegreeUrls = [...(userData.degreeScreenshots || []), ...newDegreeUrls];
 
       const userRef = doc(firestore, "users", user.uid);
 
+      // This logic ensures we're only updating an existing document.
+      // `setDoc` with `{ merge: true }` will create the doc if it doesn't exist,
+      // but the app flow ensures it always exists. Using it is a safe way to update.
       const dataToSave = {
         ...values,
-        role: "teacher",
-        degreeScreenshots: degreeUrls,
-        tutorVerificationStatus: "pending",
+        role: "tutor",
+        degreeScreenshots: allDegreeUrls,
+        tutorVerificationStatus: userData.tutorVerificationStatus === 'verified' ? 'verified' : "pending",
         location: values.location ? { latitude: values.location.lat, longitude: values.location.lng } : null,
         updatedAt: serverTimestamp(),
       };
@@ -217,7 +239,7 @@ export default function BecomeTutorPage() {
 
       await setDoc(userRef, dataToSave, { merge: true });
 
-      toast({ title: "✅ Tutor application submitted successfully." });
+      toast({ title: "✅ Tutor application submitted successfully.", description: "Your application is pending verification." });
       router.push('/dashboard');
     } catch (error: any) {
       toast({
@@ -230,26 +252,6 @@ export default function BecomeTutorPage() {
     }
   };
 
-
-  const handleGetCurrentLocation = () => {
-    setIsLocationLoading(true);
-    if(navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((position) => {
-        const { latitude, longitude } = position.coords;
-        const newLocation = { lat: latitude, lng: longitude };
-        setCurrentLocation(newLocation);
-        tutorForm.setValue("location", newLocation, { shouldValidate: true });
-        setIsLocationLoading(false);
-        toast({ title: "Location captured successfully!" });
-      }, (error) => {
-        toast({ variant: "destructive", title: "Error fetching location", description: error.message });
-        setIsLocationLoading(false);
-      });
-    } else {
-      toast({ variant: "destructive", title: "Geolocation not supported", description: "Your browser does not support geolocation." });
-      setIsLocationLoading(false);
-    }
-  };
 
   const handleMapLocationChange = (location: { lat: number; lng: number }) => {
     setCurrentLocation(location);
@@ -272,7 +274,7 @@ export default function BecomeTutorPage() {
           <CardHeader>
             <CardTitle>Become a Tutor</CardTitle>
             <CardDescription>
-              Fill out the form below to apply as a tutor on LearnSphere.
+              Fill out the form below to apply as a tutor on LearnSphere. Your application will be reviewed by our team.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -311,7 +313,7 @@ export default function BecomeTutorPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Teaching Subjects</FormLabel>
-                        <Select onValueChange={(value) => field.onChange([...field.value, value])} >
+                        <Select onValueChange={(value) => !field.value.includes(value) && field.onChange([...field.value, value])} >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select subjects you teach" />
@@ -326,8 +328,8 @@ export default function BecomeTutorPage() {
                           </SelectContent>
                         </Select>
                         <div className="flex flex-wrap gap-2 mt-2">
-                            {field.value.map((subject, index) => (
-                                <div key={index} className="flex items-center gap-2 bg-muted p-2 rounded-md">
+                            {field.value.map((subject) => (
+                                <div key={subject} className="flex items-center gap-2 bg-muted p-2 rounded-md">
                                     <span>{subject}</span>
                                     <button type="button" onClick={() => field.onChange(field.value.filter(s => s !== subject))} className="text-red-500 hover:text-red-700">
                                         &times;
@@ -396,7 +398,7 @@ export default function BecomeTutorPage() {
                     </FormItem>
                   )}
                 />
-                <FormItem>
+                 <FormItem>
                   <FormLabel>Degree Screenshots/Transcripts</FormLabel>
                   <FormControl>
                     <Input
@@ -404,25 +406,31 @@ export default function BecomeTutorPage() {
                       multiple
                       accept="image/*,.pdf"
                       onChange={handleDegreeFilesChange}
+                      disabled={isSubmitting}
                     />
                   </FormControl>
+                  <FormDescription>You can upload multiple files.</FormDescription>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {userData?.degreeScreenshots?.map((url, index) => (
+                      <div key={index} className="relative">
+                        <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500 underline">Existing File {index + 1}</a>
+                      </div>
+                    ))}
+                    {degreeFiles.map((file, index) => (
+                      <div key={index} className="relative group bg-muted p-2 rounded-md text-sm">
+                        <span>{file.name}</span>
+                        <Button type="button" variant="ghost" size="icon" className="absolute top-0 right-0 h-full w-8 text-red-500 opacity-0 group-hover:opacity-100" onClick={() => removeDegreeFile(index)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                   <FormMessage />
                 </FormItem>
 
                 <div className="space-y-4">
                     <FormLabel>Your Location (for in-person tutoring)</FormLabel>
-                    <div className="flex items-center gap-4">
-                        <Button type="button" variant="outline" onClick={handleGetCurrentLocation} disabled={isLocationLoading}>
-                            {isLocationLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <MapPin className="mr-2 h-4 w-4"/>}
-                            Capture Current Location
-                        </Button>
-                         {currentLocation && (
-                            <p className="text-sm text-muted-foreground">
-                                Lat: {currentLocation.lat.toFixed(4)}, Lng: {currentLocation.lng.toFixed(4)}
-                            </p>
-                        )}
-                    </div>
-                     <p className="text-sm text-muted-foreground">Or drag the pin to your precise location on the map.</p>
+                    <p className="text-sm text-muted-foreground">Click the button to capture your location, or search and drag the pin on the map.</p>
                      <div className="h-[400px] w-full rounded-lg overflow-hidden border">
                          <GoogleMap 
                             onLocationChange={handleMapLocationChange}
@@ -430,6 +438,7 @@ export default function BecomeTutorPage() {
                             isDraggable={true}
                          />
                      </div>
+                      {tutorForm.formState.errors.location && <FormMessage>{tutorForm.formState.errors.location.message}</FormMessage>}
                 </div>
 
                 <div className="space-y-4">
@@ -439,6 +448,7 @@ export default function BecomeTutorPage() {
                       render={() => (
                           <FormItem>
                               <FormLabel>Available Time Slots</FormLabel>
+                               <FormDescription>Select the hours you are available on each day.</FormDescription>
                               {fields.map((item, dayIndex) => (
                                 <div key={item.id} className="p-4 border rounded-lg">
                                   <h3 className="font-semibold">{item.day}</h3>
@@ -468,7 +478,7 @@ export default function BecomeTutorPage() {
                                                       tutorForm.setValue('availableSlots', allDays, { shouldValidate: true, shouldDirty: true });
                                                   }}
                                               />
-                                              <label htmlFor={`${item.day}-${slot}`} className="text-sm font-normal cursor-pointer">
+                                              <label htmlFor={`${item.day}-${slot}`} className="text-sm font-normal cursor-pointer select-none">
                                                   {timeRange}
                                               </label>
                                           </div>
@@ -477,14 +487,14 @@ export default function BecomeTutorPage() {
                                   </div>
                                 </div>
                               ))}
-                              <FormMessage>{tutorForm.formState.errors.availableSlots?.message}</FormMessage>
+                              <FormMessage>{tutorForm.formState.errors.availableSlots?.message || tutorForm.formState.errors.availableSlots?.root?.message}</FormMessage>
                           </FormItem>
                       )}
                   />
                 </div>
 
 
-                <Button type="submit" disabled={isSubmitting}>
+                <Button type="submit" disabled={isSubmitting} className="w-full">
                   {isSubmitting ? (
                     <Loader2 className="animate-spin" />
                   ) : (

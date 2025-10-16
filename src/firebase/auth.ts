@@ -1,8 +1,7 @@
-
 "use client";
 
 import { initializeFirebase } from "@/firebase";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import {
   ConfirmationResult,
   createUserWithEmailAndPassword,
@@ -58,6 +57,10 @@ export interface FullUserProfile extends UserData {
   schoolName: string;
   availableSlots: any[];
   currentLocation: { latitude: string, longitude: string };
+  location: { latitude: number, longitude: number } | null;
+  locationType: "tutor_home" | "student_home" | "online" | "center";
+  teachingSubjects: string[];
+  hourlyPricing: number;
   CNIC: string;
   degreeScreenshots: string[];
   isProfileCompleted: boolean;
@@ -94,7 +97,7 @@ const createUserProfile = async (user: User, additionalData: Partial<UserData> =
   const lastName = additionalData.lastName || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : '');
 
 
-  const data: FullUserProfile = {
+  const data: Partial<FullUserProfile> = {
     uid: user.uid,
     email: user.email || additionalData.email || "",
     firstName,
@@ -105,17 +108,6 @@ const createUserProfile = async (user: User, additionalData: Partial<UserData> =
     city: additionalData.city || "",
 
     role: "student",
-    qualification: "",
-    board: "",
-    classGrade: "",
-    about: "",
-    profileImageUrl: user.photoURL || "",
-    schoolName: "",
-    availableSlots: [],
-    currentLocation: { latitude: "", longitude: "" },
-    CNIC: "",
-    degreeScreenshots: [],
-
     isEmailVerified: user.emailVerified,
     isPhoneVerified: !!user.phoneNumber,
     tutorVerificationStatus: "unverified",
@@ -144,6 +136,8 @@ export const handleEmailSignUp = async (
   const displayName = `${userData.firstName} ${userData.lastName}`;
   await updateProfile(user, { displayName });
   await createUserProfile(user, userData);
+  // Important: Send email verification to the user.
+  // The user will not be able to log in until their email is verified.
   await sendEmailVerification(user);
   return user;
 };
@@ -153,6 +147,7 @@ export const handleEmailSignIn = async (email: string, password: string) => {
   const user = userCredential.user;
 
   if (!user.emailVerified) {
+    // Prevent login if email is not verified and throw a specific error code.
     await signOut(auth);
     const error: any = new Error("Email not verified");
     error.code = "auth/email-not-verified";
@@ -197,15 +192,23 @@ export const handleGoogleSignIn = () => handleSocialSignIn("google");
 export const handleMicrosoftSignIn = () => handleSocialSignIn("microsoft");
 
 // --- Phone Auth (OTP) ---
-export const getRecaptchaVerifier = (containerId: string) => {
+
+/**
+ * Initializes and returns a reCAPTCHA verifier.
+ * This is a critical step for phone authentication to prevent abuse.
+ * It's designed to be called once per page load.
+ * @param containerId The ID of the DOM element where the reCAPTCHA widget should be rendered.
+ * @param toast A function to display user-facing notifications.
+ * @returns A RecaptchaVerifier instance.
+ */
+export const getRecaptchaVerifier = (containerId: string, toast: (options: any) => void) => {
   if (typeof window === 'undefined') {
-    // This is a placeholder for SSR, though reCAPTCHA only works on the client.
-    return new RecaptchaVerifier(auth, containerId, { size: 'invisible' });
+    return null; // Should not be called on server
   }
 
-  // Ensure old verifier is cleared if it exists, to prevent state conflicts.
+  // Reuse existing verifier if it's already on the window object to avoid re-initialization errors.
   if (window.recaptchaVerifier) {
-    window.recaptchaVerifier.clear();
+     window.recaptchaVerifier.clear();
   }
 
   const verifier = new RecaptchaVerifier(auth, containerId, {
@@ -239,6 +242,10 @@ export const startPhoneSignIn = async (
  * Confirms the OTP and links the phone number to the existing authenticated user.
  * It then updates the user's profile in Firestore to reflect their new 'teacher' role and verified phone status.
  * This approach prevents the creation of duplicate user documents by merging data into the existing user record.
+ * @param confirmationResult The result from the initial `startPhoneSignIn` call.
+ * @param code The 6-digit OTP code entered by the user.
+ * @param currentUser The currently logged-in Firebase user.
+ * @param phoneNumber The phone number being verified (must be passed from the OTP form).
  */
 export const confirmOtp = async (
   confirmationResult: ConfirmationResult,
@@ -251,16 +258,20 @@ export const confirmOtp = async (
     code
   );
 
+  // Link the phone credential to the currently signed-in user account.
+  // This is crucial to avoid creating a new anonymous user.
   const userCredential = await linkWithCredential(currentUser, credential);
   const updatedUser = userCredential.user;
 
   const userRef = doc(firestore, `users/${updatedUser.uid}`);
 
+  // Use `updateDoc` to merge new information into the existing user document.
+  // This ensures we don't overwrite other profile data.
+  // The phone number is passed in from the form to ensure we're using the correct, verified number.
   await updateDoc(userRef, {
     isPhoneVerified: true,
-    phoneNumber: phoneNumber,
+    phoneNumber: phoneNumber, // Use the verified phone number from the form.
     updatedAt: serverTimestamp(),
-    role: "teacher",
   } as Partial<FullUserProfile>);
 
   return updatedUser;
