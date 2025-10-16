@@ -6,16 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Form,
   FormControl,
@@ -63,52 +54,51 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <Card className="w-full max-w-md shadow-lg">
-      <CardHeader className="space-y-1 text-center">
-        <CardTitle className="text-3xl font-bold font-headline">
+    <div className="w-full">
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold font-headline tracking-tight">
           Forgot Password?
-        </CardTitle>
-        <CardDescription>
-          No problem! Enter your email below and we&apos;ll send you a reset
-          link.
-        </CardDescription>
-      </CardHeader>
+        </h1>
+        <p className="text-muted-foreground">
+          No problem! Enter your email and we&apos;ll send you a reset link.
+        </p>
+      </div>
+
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="m@example.com"
-                      {...field}
-                      disabled={isLoading}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? (
-                <Loader2 className="animate-spin" />
-              ) : (
-                "Send Reset Link"
-              )}
-            </Button>
-          </CardContent>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="m@example.com"
+                    {...field}
+                    disabled={isLoading}
+                    className="h-12 rounded-xl"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <Button type="submit" className="w-full h-12 rounded-xl text-base" disabled={isLoading}>
+            {isLoading ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              "Send Reset Link"
+            )}
+          </Button>
         </form>
       </Form>
-      <CardFooter className="text-center text-sm">
+      <p className="mt-8 text-center text-sm text-muted-foreground">
         Remembered your password?{" "}
-        <Link href="/login" className="underline ml-1">
+        <Link href="/login" className="font-semibold text-primary hover:underline">
           Back to Login
         </Link>
-      </CardFooter>
-    </Card>
+      </p>
+    </div>
   );
 }

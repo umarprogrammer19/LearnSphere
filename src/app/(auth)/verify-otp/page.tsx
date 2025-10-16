@@ -3,14 +3,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -36,7 +28,6 @@ export default function VerifyOtpPage() {
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // State to hold Firebase objects. Avoids re-initialization on re-renders.
   const confirmationResultRef = useRef<ConfirmationResult | null>(null);
 
   const handleAuthError = useCallback((error: any, title: string) => {
@@ -108,7 +99,6 @@ export default function VerifyOtpPage() {
       }
     } finally {
       setIsLoading(false);
-      // isResending will be set to false by the cooldown timer
     }
   }, [phoneNumber, toast, router, handleAuthError, isResending]);
 
@@ -208,10 +198,8 @@ export default function VerifyOtpPage() {
 
     setIsLoading(true);
     try {
-      // Pass the phone number to confirmOtp so it can be saved in Firestore
       await confirmOtp(activeConfirmationResult, code, currentUser, phoneNumber);
       toast({ title: "Phone Verified!", description: "Your phone number has been successfully verified." });
-      // Redirect back to the become-tutor page to complete the application
       router.push("/become-tutor"); 
     } catch (error: any) {
       let friendlyMessage = "An unknown error occurred.";
@@ -243,49 +231,47 @@ export default function VerifyOtpPage() {
   };
 
   return (
-    <Card className="w-full max-w-md shadow-lg">
-      <CardHeader className="space-y-1 text-center">
-        <CardTitle className="text-3xl font-bold font-headline">
+    <div className="w-full">
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold font-headline tracking-tight">
           Check your Phone
-        </CardTitle>
-        <CardDescription>
-          We've sent a 6-digit code to {phoneNumber}. Enter it below.
-        </CardDescription>
-      </CardHeader>
-      <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-6">
-          <div id="recaptcha-container" className="flex justify-center my-4">
-            {/* This div will be populated by the getRecaptchaVerifier function */}
-          </div>
-          <div
-            className="flex justify-center gap-2"
-            onPaste={handlePaste}
-          >
-            {otp.map((digit, index) => (
-              <Input
-                key={index}
-                ref={(el) => (inputRefs.current[index] = el)}
-                className="w-12 h-12 text-center text-xl"
-                maxLength={1}
-                value={digit}
-                onChange={(e) => handleInputChange(e, index)}
-                onKeyDown={(e) => handleKeyDown(e, index)}
-                disabled={isLoading}
-                type="tel"
-                inputMode="numeric"
-              />
-            ))}
-          </div>
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading && !isResending ? <Loader2 className="animate-spin" /> : "Verify"}
-          </Button>
-        </CardContent>
+        </h1>
+        <p className="text-muted-foreground">
+          We&apos;ve sent a 6-digit code to {phoneNumber}. Enter it below.
+        </p>
+      </div>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div id="recaptcha-container" className="flex justify-center my-4">
+          {/* This div will be populated by the getRecaptchaVerifier function */}
+        </div>
+        <div
+          className="flex justify-center gap-2"
+          onPaste={handlePaste}
+        >
+          {otp.map((digit, index) => (
+            <Input
+              key={index}
+              ref={(el) => (inputRefs.current[index] = el)}
+              className="w-12 h-14 text-center text-2xl rounded-xl"
+              maxLength={1}
+              value={digit}
+              onChange={(e) => handleInputChange(e, index)}
+              onKeyDown={(e) => handleKeyDown(e, index)}
+              disabled={isLoading}
+              type="tel"
+              inputMode="numeric"
+            />
+          ))}
+        </div>
+        <Button type="submit" className="w-full h-12 rounded-xl text-base" disabled={isLoading}>
+          {isLoading && !isResending ? <Loader2 className="animate-spin" /> : "Verify Phone Number"}
+        </Button>
       </form>
-      <CardFooter className="flex flex-col items-center text-center text-sm text-muted-foreground">
-        <span>Didn't receive a code?</span>
+       <div className="mt-8 text-center text-sm text-muted-foreground">
+        <span>Didn&apos;t receive a code? </span>
         <Button
           variant="link"
-          className="p-0 h-auto"
+          className="p-0 h-auto font-semibold text-primary"
           onClick={handleResendOtp}
           disabled={isResending || cooldown > 0}
           type="button"
@@ -296,8 +282,8 @@ export default function VerifyOtpPage() {
              "Resend Code"
           )}
         </Button>
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   );
 }
 
