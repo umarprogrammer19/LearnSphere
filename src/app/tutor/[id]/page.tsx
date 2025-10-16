@@ -48,9 +48,9 @@ export default function TutorDetailPage() {
       <>
         <Header />
         <main className="flex-grow container mx-auto py-12 px-4 text-center">
-          <h2 className="text-2xl font-bold text-destructive">Tutor not found</h2>
+          <h2 className="text-2xl font-bold text-destructive">Teacher not found</h2>
           <p className="text-muted-foreground mt-2">
-            {error ? error.message : "The tutor you are looking for does not exist or is not verified."}
+            {error ? error.message : "The teacher you are looking for does not exist or is not verified."}
           </p>
           <Button asChild className="mt-4">
               <a href="/find-tutor">Back to Search</a>
@@ -159,7 +159,7 @@ export default function TutorDetailPage() {
                         </div>
                       ) : (
                         <div className="text-center text-muted-foreground py-8">
-                            <p>Tutor has not set their availability yet.</p>
+                            <p>Teacher has not set their availability yet.</p>
                         </div>
                       )}
                 </CardContent>

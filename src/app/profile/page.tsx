@@ -58,7 +58,7 @@ const profileFormSchema = z.object({
   firstName: z.string().min(1, "First name is required."),
   lastName: z.string().min(1, "Last name is required."),
   email: z.string().email(),
-  phoneNumber: z.string().min(1, "Phone number is required."),
+  phoneNumber: z.string().regex(/^\+92\d{10}$/, { message: "Phone must be in the format +923XXXXXXXXX."}),
   dateOfBirth: z.date({ required_error: "Date of birth is required." }),
   country: z.string().min(1, "Country is required."),
   city: z.string().min(1, "City is required."),
@@ -102,6 +102,7 @@ export default function ProfilePage() {
     if (userData) {
       profileForm.reset({
         ...userData,
+        phoneNumber: userData.phoneNumber || "",
         dateOfBirth: userData.dateOfBirth
           ? parse(userData.dateOfBirth, "yyyy-MM-dd", new Date())
           : new Date(),
@@ -305,7 +306,7 @@ export default function ProfilePage() {
                     <FormItem>
                       <FormLabel>Phone Number</FormLabel>
                       <FormControl>
-                        <Input placeholder="+92 300 1234567" {...field} />
+                        <Input placeholder="+923001234567" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -507,15 +508,15 @@ export default function ProfilePage() {
             {userData?.role !== 'teacher' && (
               <div className="text-center">
                 <Button asChild>
-                  <Link href="/become-tutor">Apply to Become a Tutor</Link>
+                  <Link href="/become-tutor">Apply to Become a Teacher</Link>
                 </Button>
               </div>
             )}
             {
               userData?.role === 'teacher' && (
                 <div className="text-center p-4 border-dashed border-2 rounded-lg">
-                  <h3 className="text-lg font-semibold">You are a Tutor!</h3>
-                  <p className="text-muted-foreground">Your application to become a tutor has been submitted.</p>
+                  <h3 className="text-lg font-semibold">You are a Teacher!</h3>
+                  <p className="text-muted-foreground">Your application to become a teacher has been submitted.</p>
                   <p className="text-muted-foreground">Status: <span className="font-bold">{userData.tutorVerificationStatus}</span></p>
                 </div>
               )
@@ -528,7 +529,3 @@ export default function ProfilePage() {
     </>
   );
 }
-
-
-
-    

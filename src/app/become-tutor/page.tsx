@@ -31,8 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, MapPin, X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -41,24 +40,22 @@ import { storage } from "@/firebase/config";
 import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
 import { GoogleMap } from "@/components/google-map";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TimePicker } from "@/components/ui/time-picker";
+import { FullUserProfile } from "@/firebase/auth";
 
 const { firestore } = initializeFirebase();
 
-const timeSlots = Array.from({ length: 24 }, (_, i) => {
-  const hour = i.toString().padStart(2, '0');
-  return `${hour}:00`;
+const timeSlotSchema = z.object({
+  startTime: z.string().min(1, "Start time is required."),
+  endTime: z.string().min(1, "End time is required."),
+  availableSeats: z.coerce.number().min(1, "Seats must be at least 1."),
 });
 
 const availableSlotsSchema = z.array(z.object({
   day: z.string(),
-  slots: z.array(z.object({
-    startTime: z.string(),
-    endTime: z.string(),
-  }))
-})).min(1, "Please select at least one available time slot.").refine(
-  (days) => days.some(day => day.slots.length > 0),
-  { message: "Please select at least one available time slot." }
-);
+  slots: z.array(timeSlotSchema)
+}));
 
 const subjects = [
   "Mathematics",
@@ -92,6 +89,8 @@ const tutorFormSchema = z.object({
   location: z.object({
     lat: z.number(),
     lng: z.number(),
+    formattedAddress: z.string().optional(),
+    placeName: z.string().optional(),
   }).optional(),
 });
 
@@ -140,20 +139,20 @@ export default function BecomeTutorPage() {
   }, [userData]);
 
 
-  const { fields } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control: tutorForm.control,
     name: "availableSlots"
   });
 
   useEffect(() => {
     if (!isUserLoading && !user) {
-      toast({ title: "Please log in", description: "You need to be logged in to become a tutor.", variant: "destructive" });
+      toast({ title: "Please log in", description: "You need to be logged in to become a teacher.", variant: "destructive" });
       router.push("/login");
     }
     if (!isUserLoading && userData && !userData.isProfileCompleted) {
       toast({
         title: "Profile Incomplete",
-        description: "Please complete your profile before applying to be a tutor.",
+        description: "Please complete your profile before applying to be a teacher.",
         variant: "destructive"
       });
       router.push("/profile");
@@ -185,14 +184,13 @@ export default function BecomeTutorPage() {
     if (!userData.isPhoneVerified) {
       toast({
         title: "Phone Verification Required",
-        description: "Please verify your phone number to become a tutor.",
+        description: "Please verify your phone number to become a teacher.",
       });
 
       let phoneNumber = userData.phoneNumber;
-      if (phoneNumber && !phoneNumber.startsWith('+92')) {
-        phoneNumber = `+92${phoneNumber.replace(/^0/, '')}`;
-      } else if (!phoneNumber) {
-        toast({ variant: "destructive", title: "Missing Phone Number", description: "Please add a phone number to your profile first." })
+      
+      if(!phoneNumber || !/^\+92\d{10}$/.test(phoneNumber)) {
+        toast({ variant: "destructive", title: "Invalid Phone Number", description: "Please add a valid phone number in the format +92XXXXXXXXXX to your profile first." })
         router.push('/profile');
         return;
       }
@@ -209,10 +207,8 @@ export default function BecomeTutorPage() {
 
     setIsSubmitting(true);
     try {
-      // Logic for uploading only new files.
-      const newDegreeUrls = [];
+      const newDegreeUrls: string[] = [];
       for (const file of degreeFiles) {
-        // A simple check to see if the file is new. In a real app, you might check against existing URLs.
         const url = await uploadFile(
           file,
           `degree-screenshots/${user.uid}/${Date.now()}-${file.name}`
@@ -220,27 +216,22 @@ export default function BecomeTutorPage() {
         newDegreeUrls.push(url);
       }
 
-      // Combine old URLs with new ones.
       const allDegreeUrls = [...(userData.degreeScreenshots || []), ...newDegreeUrls];
-
       const userRef = doc(firestore, "users", user.uid);
 
-      // This logic ensures we're only updating an existing document.
-      // `setDoc` with `{ merge: true }` will create the doc if it doesn't exist,
-      // but the app flow ensures it always exists. Using it is a safe way to update.
-      const dataToSave = {
+      const dataToSave: Partial<FullUserProfile> = {
         ...values,
-        role: "tutor",
+        role: "teacher",
         degreeScreenshots: allDegreeUrls,
         tutorVerificationStatus: userData.tutorVerificationStatus === 'verified' ? 'verified' : "pending",
-        location: values.location ? { latitude: values.location.lat, longitude: values.location.lng } : null,
+        location: values.location ? { latitude: values.location.lat, longitude: values.location.lng, formattedAddress: values.location.formattedAddress, placeName: values.location.placeName } : null,
         updatedAt: serverTimestamp(),
       };
 
 
       await setDoc(userRef, dataToSave, { merge: true });
 
-      toast({ title: "✅ Tutor application submitted successfully.", description: "Your application is pending verification." });
+      toast({ title: "✅ Teacher application submitted successfully.", description: "Your application is pending verification." });
       router.push('/dashboard');
     } catch (error: any) {
       toast({
@@ -254,11 +245,11 @@ export default function BecomeTutorPage() {
   };
 
 
-  const handleMapLocationChange = (location: { lat: number; lng: number }) => {
-    setCurrentLocation(location);
+  const handleMapLocationChange = (location: { lat: number; lng: number, formattedAddress?: string, placeName?: string }) => {
+    setCurrentLocation({lat: location.lat, lng: location.lng});
     tutorForm.setValue("location", location, { shouldValidate: true });
   };
-
+  
   if (isUserLoading || !userData) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -273,9 +264,9 @@ export default function BecomeTutorPage() {
       <main className="container mx-auto py-12 px-4">
         <Card className="max-w-4xl mx-auto">
           <CardHeader>
-            <CardTitle>Become a Tutor</CardTitle>
+            <CardTitle>Become a Teacher</CardTitle>
             <CardDescription>
-              Fill out the form below to apply as a tutor on LearnSphere. Your application will be reviewed by our team.
+              Fill out the form below to apply as a teacher on LearnSphere. Your application will be reviewed by our team.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -431,63 +422,40 @@ export default function BecomeTutorPage() {
 
                 <div className="space-y-4">
                   <FormLabel>Your Location (for in-person tutoring)</FormLabel>
-                  <p className="text-sm text-muted-foreground">Click the button to capture your location, or search and drag the pin on the map.</p>
+                  <p className="text-sm text-muted-foreground">Search for your address or drag the pin on the map.</p>
                   <div className="h-[400px] w-full rounded-lg overflow-hidden border">
                     <GoogleMap
                       onLocationChange={handleMapLocationChange}
                       initialCenter={currentLocation}
                       isDraggable={true}
+                      showSearchBox={true}
                     />
                   </div>
                   {tutorForm.formState.errors.location && <FormMessage>{tutorForm.formState.errors.location.message}</FormMessage>}
                 </div>
 
                 <div className="space-y-4">
-                  <FormField
+                   <FormField
                     control={tutorForm.control}
                     name="availableSlots"
                     render={() => (
                       <FormItem>
                         <FormLabel>Available Time Slots</FormLabel>
-                        <FormDescription>Select the hours you are available on each day.</FormDescription>
-                        {fields.map((item, dayIndex) => (
-                          <div key={item.id} className="p-4 border rounded-lg">
-                            <h3 className="font-semibold">{item.day}</h3>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 mt-2">
-                              {timeSlots.map((slot) => {
-                                const timeRange = `${slot} - ${timeSlots[timeSlots.indexOf(slot) + 1] || "00:00"}`;
-                                const isChecked = tutorForm.watch(`availableSlots.${dayIndex}.slots`).some(s => s.startTime === slot);
-
-                                return (
-                                  <div key={slot} className="flex items-center space-x-2">
-                                    <Checkbox
-                                      id={`${item.day}-${slot}`}
-                                      checked={isChecked}
-                                      onCheckedChange={(checked) => {
-                                        const currentSlots = tutorForm.getValues(`availableSlots.${dayIndex}.slots`);
-                                        let newSlots;
-                                        const nextSlot = timeSlots[timeSlots.indexOf(slot) + 1] || "00:00";
-
-                                        if (checked) {
-                                          newSlots = [...currentSlots, { startTime: slot, endTime: nextSlot }];
-                                        } else {
-                                          newSlots = currentSlots.filter(s => s.startTime !== slot);
-                                        }
-
-                                        const allDays = tutorForm.getValues('availableSlots');
-                                        allDays[dayIndex].slots = newSlots.sort((a, b) => a.startTime.localeCompare(b.startTime));
-                                        tutorForm.setValue('availableSlots', allDays, { shouldValidate: true, shouldDirty: true });
-                                      }}
-                                    />
-                                    <label htmlFor={`${item.day}-${slot}`} className="text-sm font-normal cursor-pointer select-none">
-                                      {timeRange}
-                                    </label>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        ))}
+                        <FormDescription>
+                          Select the days and time slots you are available.
+                        </FormDescription>
+                        <Tabs defaultValue="Monday" className="w-full">
+                          <TabsList className="grid w-full grid-cols-3 md:grid-cols-7">
+                            {daysOfWeek.map(day => (
+                              <TabsTrigger key={day} value={day}>{day.substring(0,3)}</TabsTrigger>
+                            ))}
+                          </TabsList>
+                          {fields.map((item, dayIndex) => (
+                            <TabsContent key={item.id} value={item.day}>
+                              <SlotManager dayIndex={dayIndex} control={tutorForm.control} />
+                            </TabsContent>
+                          ))}
+                        </Tabs>
                         <FormMessage>{tutorForm.formState.errors.availableSlots?.message || tutorForm.formState.errors.availableSlots?.root?.message}</FormMessage>
                       </FormItem>
                     )}
@@ -509,5 +477,77 @@ export default function BecomeTutorPage() {
       </main>
       <Footer />
     </>
+  );
+}
+
+
+function SlotManager({ dayIndex, control }: { dayIndex: number, control: any }) {
+  const { fields, append, remove, update } = useFieldArray({
+    control,
+    name: `availableSlots.${dayIndex}.slots`
+  });
+
+  return (
+    <div className="space-y-4 p-4 border rounded-lg">
+      <h3 className="font-semibold">{control.getValues(`availableSlots.${dayIndex}.day`)}</h3>
+      {fields.map((slot, slotIndex) => (
+        <div key={slot.id} className="flex flex-col md:flex-row gap-4 items-center border-b pb-4">
+           <FormField
+              control={control}
+              name={`availableSlots.${dayIndex}.slots.${slotIndex}.startTime`}
+              render={({ field }) => (
+                <FormItem className="flex-1">
+                  <FormLabel>Start Time</FormLabel>
+                  <FormControl>
+                    <TimePicker value={field.value} onChange={field.onChange} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+           <FormField
+              control={control}
+              name={`availableSlots.${dayIndex}.slots.${slotIndex}.endTime`}
+              render={({ field }) => (
+                <FormItem className="flex-1">
+                  <FormLabel>End Time</FormLabel>
+                   <FormControl>
+                    <TimePicker value={field.value} onChange={field.onChange} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={control}
+              name={`availableSlots.${dayIndex}.slots.${slotIndex}.availableSeats`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Seats</FormLabel>
+                  <FormControl>
+                    <Input type="number" min="1" {...field} className="w-24"/>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button
+                type="button"
+                variant="destructive"
+                onClick={() => remove(slotIndex)}
+                className="mt-6"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+        </div>
+      ))}
+       <Button
+        type="button"
+        variant="outline"
+        onClick={() => append({ startTime: '09:00', endTime: '10:00', availableSeats: 1 })}
+      >
+        Add Time Slot
+      </Button>
+    </div>
   );
 }

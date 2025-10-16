@@ -45,7 +45,7 @@ export interface UserData {
 
 export interface FullUserProfile extends UserData {
   uid: string;
-  role: "student" | "teacher" | "shop_owner" | "rider";
+  role: "student" | "teacher" | "shop_owner" | "rider" | "admin";
   isEmailVerified: boolean;
   isPhoneVerified: boolean;
   tutorVerificationStatus: "pending" | "verified" | "rejected" | "unverified";
@@ -57,7 +57,7 @@ export interface FullUserProfile extends UserData {
   schoolName: string;
   availableSlots: any[];
   currentLocation: { latitude: string, longitude: string };
-  location: { latitude: number, longitude: number } | null;
+  location: { latitude: number, longitude: number, formattedAddress?: string, placeName?: string } | null;
   locationType: "tutor_home" | "student_home" | "online" | "center";
   teachingSubjects: string[];
   hourlyPricing: number;
@@ -136,8 +136,6 @@ export const handleEmailSignUp = async (
   const displayName = `${userData.firstName} ${userData.lastName}`;
   await updateProfile(user, { displayName });
   await createUserProfile(user, userData);
-  // Important: Send email verification to the user.
-  // The user will not be able to log in until their email is verified.
   await sendEmailVerification(user);
   return user;
 };
@@ -147,7 +145,6 @@ export const handleEmailSignIn = async (email: string, password: string) => {
   const user = userCredential.user;
 
   if (!user.emailVerified) {
-    // Prevent login if email is not verified and throw a specific error code.
     await signOut(auth);
     const error: any = new Error("Email not verified");
     error.code = "auth/email-not-verified";
@@ -192,21 +189,11 @@ export const handleGoogleSignIn = () => handleSocialSignIn("google");
 export const handleMicrosoftSignIn = () => handleSocialSignIn("microsoft");
 
 // --- Phone Auth (OTP) ---
-
-/**
- * Initializes and returns a reCAPTCHA verifier.
- * This is a critical step for phone authentication to prevent abuse.
- * It's designed to be called once per page load.
- * @param containerId The ID of the DOM element where the reCAPTCHA widget should be rendered.
- * @param toast A function to display user-facing notifications.
- * @returns A RecaptchaVerifier instance.
- */
-export const getRecaptchaVerifier = (containerId: string, toast: (options: any) => void) => {
+export const getRecaptchaVerifier = (containerId: string, toast: ReturnType<typeof useToast>['toast']) => {
   if (typeof window === 'undefined') {
-    return null; // Should not be called on server
+    return null; 
   }
 
-  // Reuse existing verifier if it's already on the window object to avoid re-initialization errors.
   if (window.recaptchaVerifier) {
      window.recaptchaVerifier.clear();
   }
@@ -214,10 +201,9 @@ export const getRecaptchaVerifier = (containerId: string, toast: (options: any) 
   const verifier = new RecaptchaVerifier(auth, containerId, {
     size: "invisible",
     callback: (response: any) => {
-      // reCAPTCHA solved, allow signInWithPhoneNumber.
+      // reCAPTCHA solved
     },
     'expired-callback': () => {
-      // Response expired. Ask user to solve reCAPTCHA again.
       toast({
         title: "reCAPTCHA Expired",
         description: "Please try sending the code again.",
@@ -238,15 +224,6 @@ export const startPhoneSignIn = async (
   return signInWithPhoneNumber(auth, phoneNumber, verifier);
 };
 
-/**
- * Confirms the OTP and links the phone number to the existing authenticated user.
- * It then updates the user's profile in Firestore to reflect their new 'teacher' role and verified phone status.
- * This approach prevents the creation of duplicate user documents by merging data into the existing user record.
- * @param confirmationResult The result from the initial `startPhoneSignIn` call.
- * @param code The 6-digit OTP code entered by the user.
- * @param currentUser The currently logged-in Firebase user.
- * @param phoneNumber The phone number being verified (must be passed from the OTP form).
- */
 export const confirmOtp = async (
   confirmationResult: ConfirmationResult,
   code: string,
@@ -258,23 +235,17 @@ export const confirmOtp = async (
     code
   );
 
-  // Link the phone credential to the currently signed-in user account.
-  // This is crucial to avoid creating a new anonymous user.
-  const userCredential = await linkWithCredential(currentUser, credential);
-  const updatedUser = userCredential.user;
+  await linkWithCredential(currentUser, credential);
 
-  const userRef = doc(firestore, `users/${updatedUser.uid}`);
-
-  // Use `updateDoc` to merge new information into the existing user document.
-  // This ensures we don't overwrite other profile data.
-  // The phone number is passed in from the form to ensure we're using the correct, verified number.
+  const userRef = doc(firestore, `users/${currentUser.uid}`);
+  
   await updateDoc(userRef, {
     isPhoneVerified: true,
-    phoneNumber: phoneNumber, // Use the verified phone number from the form.
+    phoneNumber: phoneNumber,
     updatedAt: serverTimestamp(),
   } as Partial<FullUserProfile>);
 
-  return updatedUser;
+  return currentUser;
 };
 
 

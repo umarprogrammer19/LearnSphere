@@ -26,7 +26,8 @@ import { collection, query, where, doc, updateDoc } from "firebase/firestore";
 import { initializeFirebase, useMemoFirebase } from "@/firebase";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { setDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { serverTimestamp } from "firebase/firestore";
 
 const { firestore } = initializeFirebase();
 
@@ -44,13 +45,29 @@ export function TutorDashboard() {
 
     const { data: bookingRequests, isLoading } = useCollection<any>(bookingsQuery);
 
-    const handleBookingAction = async (bookingId: string, confirm: boolean) => {
-        const bookingRef = doc(firestore, "bookings", bookingId);
+    const handleBookingAction = async (booking: any, confirm: boolean) => {
+        const bookingRef = doc(firestore, "bookings", booking.id);
+        const userRef = doc(firestore, "users", user!.uid);
+
         try {
-            await setDocumentNonBlocking(bookingRef, {
+            await updateDoc(bookingRef, {
                 lessonConfirmed: confirm,
                 status: confirm ? 'confirmed' : 'rejected'
-            }, { merge: true });
+            });
+
+            if (confirm) {
+                const dayIndex = userData.availableSlots.findIndex((d: any) => d.day === booking.slot.day);
+                const slotIndex = userData.availableSlots[dayIndex].slots.findIndex((s: any) => s.startTime === booking.slot.startTime);
+                
+                if(dayIndex !== -1 && slotIndex !== -1) {
+                    const newAvailableSlots = [...userData.availableSlots];
+                    const seats = newAvailableSlots[dayIndex].slots[slotIndex].availableSeats;
+                    if(seats > 0) {
+                        newAvailableSlots[dayIndex].slots[slotIndex].availableSeats = seats - 1;
+                        await updateDoc(userRef, { availableSlots: newAvailableSlots, updatedAt: serverTimestamp() });
+                    }
+                }
+            }
 
             toast({
                 title: `Booking ${confirm ? 'Confirmed' : 'Rejected'}`,
@@ -110,10 +127,10 @@ export function TutorDashboard() {
                                                         </Badge>
                                                     </TableCell>
                                                     <TableCell className="text-right space-x-2">
-                                                        <Button size="icon" variant="outline" className="text-green-600 hover:bg-green-100" onClick={() => handleBookingAction(req.id, true)}>
+                                                        <Button size="icon" variant="outline" className="text-green-600 hover:bg-green-100" onClick={() => handleBookingAction(req, true)}>
                                                             <Check className="h-4 w-4" />
                                                         </Button>
-                                                        <Button size="icon" variant="outline" className="text-red-600 hover:bg-red-100" onClick={() => handleBookingAction(req.id, false)}>
+                                                        <Button size="icon" variant="outline" className="text-red-600 hover:bg-red-100" onClick={() => handleBookingAction(req, false)}>
                                                             <X className="h-4 w-4" />
                                                         </Button>
                                                     </TableCell>

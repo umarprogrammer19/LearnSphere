@@ -9,11 +9,12 @@ import { Label } from '@/components/ui/label';
 import { useUser } from '@/hooks/use-user';
 import { useToast } from '@/hooks/use-toast';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { collection, serverTimestamp } from 'firebase/firestore';
+import { collection, serverTimestamp, runTransaction, where, query, getDocs } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import { Loader2 } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
 import { useRouter } from 'next/navigation';
+import { Badge } from './ui/badge';
 
 
 const { firestore } = initializeFirebase();
@@ -65,32 +66,44 @@ export function BookingModal({ tutor, isOpen, setIsOpen }: BookingModalProps) {
 
         setIsLoading(true);
 
-        const finalPaymentMethod = sessionType === 'online' ? 'stripe' : (paymentMethod === 'payNow' ? 'stripe' : 'cash');
-        const finalPaymentStatus = sessionType === 'online' || paymentMethod === 'payNow' ? 'pending' : 'cash_pending';
-
-        const bookingData = {
-            studentId: user.uid,
-            studentName: `${userData.firstName} ${userData.lastName}`,
-            studentEmail: userData.email,
-            tutorId: tutor.id,
-            tutorName: `${tutor.firstName} ${tutor.lastName}`,
-            slot: selectedSlot,
-            sessionType,
-            paymentMethod: finalPaymentMethod,
-            paymentStatus: finalPaymentStatus,
-            lessonConfirmed: false,
-            createdAt: serverTimestamp(),
-            amount: tutor.hourlyPricing,
-        };
-
         try {
-            // Check for double booking (simple check, for a real app use transactions)
-            // This is a placeholder for a more robust solution.
+            // Prevent double booking
+            const bookingsRef = collection(firestore, "bookings");
+            const q = query(bookingsRef, 
+                where("tutorId", "==", tutor.id), 
+                where("slot.day", "==", selectedSlot.day),
+                where("slot.startTime", "==", selectedSlot.startTime),
+                where("lessonConfirmed", "==", true)
+            );
+            const existingBookings = await getDocs(q);
+            if(existingBookings.docs.length >= selectedSlot.availableSeats) {
+                 toast({ variant: 'destructive', title: 'Booking Failed', description: "This slot is already full." });
+                 setIsLoading(false);
+                 return;
+            }
+
+
+            const finalPaymentMethod = sessionType === 'online' ? 'stripe' : (paymentMethod === 'payNow' ? 'stripe' : 'cash');
+            const finalPaymentStatus = sessionType === 'online' || paymentMethod === 'payNow' ? 'pending' : 'cash_pending';
+
+            const bookingData = {
+                studentId: user.uid,
+                studentName: `${userData.firstName} ${userData.lastName}`,
+                studentEmail: userData.email,
+                tutorId: tutor.id,
+                tutorName: `${tutor.firstName} ${tutor.lastName}`,
+                slot: selectedSlot,
+                sessionType,
+                paymentMethod: finalPaymentMethod,
+                paymentStatus: finalPaymentStatus,
+                lessonConfirmed: false,
+                createdAt: serverTimestamp(),
+                amount: tutor.hourlyPricing,
+            };
 
             const newBookingRef = await addDocumentNonBlocking(collection(firestore, "bookings"), bookingData);
             
             if (finalPaymentMethod === 'stripe') {
-                // Redirect to Stripe Checkout
                 const res = await fetch('/api/stripe/create-checkout-session', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -116,7 +129,7 @@ export function BookingModal({ tutor, isOpen, setIsOpen }: BookingModalProps) {
                 }
 
             } else {
-                toast({ title: 'Booking Request Sent!', description: 'The tutor will confirm your lesson shortly.' });
+                toast({ title: 'Booking Request Sent!', description: 'The teacher will confirm your lesson shortly.' });
                 handleClose();
             }
 
@@ -147,8 +160,13 @@ export function BookingModal({ tutor, isOpen, setIsOpen }: BookingModalProps) {
                             </SelectTrigger>
                             <SelectContent>
                                 {availableSlots.map((slot: any, index: number) => (
-                                    <SelectItem key={index} value={JSON.stringify(slot)}>
-                                        {slot.day}, {slot.startTime} - {slot.endTime}
+                                    <SelectItem key={index} value={JSON.stringify(slot)} disabled={slot.availableSeats <= 0}>
+                                        <div className="flex justify-between w-full">
+                                            <span>{slot.day}, {slot.startTime} - {slot.endTime}</span>
+                                            <Badge variant={slot.availableSeats > 0 ? "secondary" : "destructive"}>
+                                                {slot.availableSeats > 0 ? `${slot.availableSeats} seats left` : 'Full'}
+                                            </Badge>
+                                        </div>
                                     </SelectItem>
                                 ))}
                             </SelectContent>

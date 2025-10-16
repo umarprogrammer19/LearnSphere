@@ -29,10 +29,15 @@ import {
   handleEmailSignIn,
   handleGoogleSignIn,
   handleMicrosoftSignIn,
+  FullUserProfile
 } from "@/firebase/auth";
 import { FcGoogle } from "react-icons/fc";
 import { FaMicrosoft } from "react-icons/fa";
 import { Loader2 } from "lucide-react";
+import { doc, getDoc } from "firebase/firestore";
+import { initializeFirebase } from "@/firebase";
+
+const { firestore } = initializeFirebase();
 
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -54,13 +59,35 @@ export default function LoginPage() {
       password: "",
     },
   });
+  
+  const redirectToDashboard = (role: string) => {
+    if (role === 'admin') {
+      router.push('/admin-dashboard');
+    } else {
+      router.push('/dashboard');
+    }
+  };
+
+  const handleLoginSuccess = async (user: any) => {
+      const userDocRef = doc(firestore, "users", user.uid);
+      const userDoc = await getDoc(userDocRef);
+      if (userDoc.exists()) {
+        const userData = userDoc.data() as FullUserProfile;
+        toast({ title: "Login Successful" });
+        redirectToDashboard(userData.role);
+      } else {
+         // Fallback if doc doesn't exist for some reason
+        toast({ title: "Login Successful" });
+        router.push("/");
+      }
+  }
+
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      await handleEmailSignIn(values.email, values.password);
-      toast({ title: "Login Successful" });
-      router.push("/");
+      const user = await handleEmailSignIn(values.email, values.password);
+      await handleLoginSuccess(user);
     } catch (error: any) {
         let errorMessage = "An unknown error occurred.";
         if (error.code) {
@@ -96,8 +123,7 @@ export default function LoginPage() {
       const user = await signInMethod();
 
       if (user) {
-        toast({ title: "Login Successful" });
-        router.push("/");
+        await handleLoginSuccess(user);
       }
     } catch (error: any) {
       if (error.code !== "auth/popup-closed-by-user") {

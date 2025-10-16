@@ -67,7 +67,7 @@ export function StudentDashboard() {
                                 <CardTitle className="text-2xl font-bold">Your Bookings</CardTitle>
                                 <div className="flex gap-2">
                                     <Button asChild className="bg-primary hover:bg-primary/90 text-white rounded-lg">
-                                        <Link href="/find-tutor">Find a New Tutor</Link>
+                                        <Link href="/find-tutor">Find a New Teacher</Link>
                                     </Button>
                                 </div>
                             </div>
@@ -122,7 +122,7 @@ const BookingsTable = ({ bookings }: { bookings: any[] | null }) => {
         <Table>
             <TableHeader>
                 <TableRow>
-                    <TableHead>Tutor</TableHead>
+                    <TableHead>Teacher</TableHead>
                     <TableHead>Date & Time</TableHead>
                     <TableHead>Subject</TableHead>
                     <TableHead>Status</TableHead>

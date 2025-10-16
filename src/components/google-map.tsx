@@ -1,35 +1,40 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GoogleMap as GoogleMapApi, LoadScript, MarkerF, InfoWindowF } from '@react-google-maps/api';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
 import { Button } from './ui/button';
 import Link from 'next/link';
+import { Input } from './ui/input';
 
 const mapContainerStyle = {
   width: '100%',
   height: '100%',
 };
 
-const libraries: "places"[] = ["places"];
+const libraries: ("places")[] = ["places"];
 
 interface GoogleMapProps {
-  onLocationChange?: (location: { lat: number; lng: number }) => void;
+  onLocationChange?: (location: { lat: number; lng: number, formattedAddress?: string, placeName?: string }) => void;
   initialCenter?: { lat: number; lng: number };
   height?: string;
   tutors?: any[]; // For find-tutor page
   isDraggable?: boolean;
+  showSearchBox?: boolean;
 }
 
-export function GoogleMap({ onLocationChange, initialCenter, height = '400px', tutors, isDraggable = false }: GoogleMapProps) {
+export function GoogleMap({ onLocationChange, initialCenter, height = '400px', tutors, isDraggable = false, showSearchBox = false }: GoogleMapProps) {
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [markerPosition, setMarkerPosition] = useState(initialCenter || { lat: 30.3753, lng: 69.3451 });
   const [activeTutor, setActiveTutor] = useState<any | null>(null);
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
+  const searchBoxRef = useRef<HTMLInputElement>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+
 
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
 
@@ -37,7 +42,6 @@ export function GoogleMap({ onLocationChange, initialCenter, height = '400px', t
     if (initialCenter) {
       setMarkerPosition(initialCenter);
     } else {
-        // Try to get user's current location if no initial center is provided
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 (position) => {
@@ -50,28 +54,60 @@ export function GoogleMap({ onLocationChange, initialCenter, height = '400px', t
                     if(onLocationChange) onLocationChange(newPos);
                 },
                 () => {
-                    toast({ variant: 'destructive', title: 'Could not get your location.' });
+                    // Fail silently, default location is Pakistan
                 }
             );
         }
     }
-  }, [initialCenter, map, onLocationChange, toast]);
+  }, [initialCenter, map, onLocationChange]);
 
   const onMapLoad = useCallback((mapInstance: google.maps.Map) => {
     setMap(mapInstance);
     setIsLoading(false);
-  }, []);
+    if(showSearchBox && searchBoxRef.current) {
+        const autocomplete = new google.maps.places.Autocomplete(searchBoxRef.current);
+        autocomplete.setFields(["address_components", "geometry", "icon", "name"]);
+        autocomplete.bindTo("bounds", mapInstance);
+        autocompleteRef.current = autocomplete;
+        autocomplete.addListener('place_changed', () => {
+            const place = autocomplete.getPlace();
+            if(place.geometry?.location) {
+                const newPos = { lat: place.geometry.location.lat(), lng: place.geometry.location.lng() };
+                setMarkerPosition(newPos);
+                mapInstance.panTo(newPos);
+                mapInstance.setZoom(15);
+                 if (onLocationChange) {
+                    onLocationChange({ ...newPos, formattedAddress: place.formatted_address, placeName: place.name });
+                }
+            } else {
+                toast({ variant: 'destructive', title: "Location not found"});
+            }
+        });
+    }
+  }, [showSearchBox, onLocationChange, toast]);
 
   const onUnmount = useCallback(() => {
     setMap(null);
   }, []);
 
-  const onMarkerDragEnd = (e: google.maps.MapMouseEvent) => {
+  const handleMapClick = (e: google.maps.MapMouseEvent) => {
     if (e.latLng && onLocationChange) {
       const newPos = { lat: e.latLng.lat(), lng: e.latLng.lng() };
       setMarkerPosition(newPos);
-      onLocationChange(newPos);
+      
+      const geocoder = new google.maps.Geocoder();
+      geocoder.geocode({ location: newPos }, (results, status) => {
+        if (status === 'OK' && results && results[0]) {
+            onLocationChange({ ...newPos, formattedAddress: results[0].formatted_address, placeName: results[0].address_components[0].long_name });
+        } else {
+            onLocationChange(newPos);
+        }
+      });
     }
+  };
+
+  const onMarkerDragEnd = (e: google.maps.MapMouseEvent) => {
+    handleMapClick(e); // Reuse the same logic
   };
   
   if (!googleMapsApiKey) {
@@ -92,15 +128,26 @@ export function GoogleMap({ onLocationChange, initialCenter, height = '400px', t
         </div>
       )}
        <LoadScript googleMapsApiKey={googleMapsApiKey} libraries={libraries}>
+        <>
+        {showSearchBox && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 w-[90%] max-w-lg">
+                <div className="relative">
+                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                    <Input ref={searchBoxRef} placeholder="Search for a location" className="w-full pl-10 shadow-md"/>
+                </div>
+            </div>
+        )}
         <GoogleMapApi
           mapContainerStyle={mapContainerStyle}
           center={markerPosition}
           zoom={tutors ? 10 : 13}
           onLoad={onMapLoad}
           onUnmount={onUnmount}
+          onClick={handleMapClick}
           options={{
              streetViewControl: false,
              mapTypeControl: false,
+             fullscreenControl: false
           }}
         >
           {tutors ? (
@@ -145,6 +192,7 @@ export function GoogleMap({ onLocationChange, initialCenter, height = '400px', t
           )}
 
         </GoogleMapApi>
+        </>
       </LoadScript>
     </div>
   );

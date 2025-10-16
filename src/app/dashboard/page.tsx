@@ -5,10 +5,6 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { StudentDashboard } from "@/components/student-dashboard";
 import { TutorDashboard } from "@/components/tutor-dashboard";
-import { doc, getDoc } from "firebase/firestore";
-import { initializeFirebase } from "@/firebase";
-
-const { firestore } = initializeFirebase();
 
 
 export default function DashboardPage() {
@@ -21,23 +17,6 @@ export default function DashboardPage() {
     }
   }, [user, isLoading, router]);
 
-  // This effect checks if a user is trying to access a role-specific dashboard
-  // For which they are not authorized (e.g. student accessing /tutor-dashboard)
-  useEffect(() => {
-    const verifyRole = async () => {
-      if (user && !isLoading) {
-        const userDocRef = doc(firestore, "users", user.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-          const role = userDoc.data()?.role;
-           // Add any role-based redirection logic here if needed in the future
-        }
-      }
-    };
-    verifyRole();
-  }, [user, isLoading, router]);
-
-
   if (isLoading || !userData) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -47,6 +26,11 @@ export default function DashboardPage() {
   }
 
   // Render the appropriate dashboard based on user role
+  if (userData.role === 'admin') {
+    router.push('/admin-dashboard');
+    return null; 
+  }
+  
   if (userData.role === 'teacher') {
     return <TutorDashboard />;
   }

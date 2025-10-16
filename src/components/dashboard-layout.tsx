@@ -12,11 +12,14 @@ import {
   Home,
   LineChart,
   LogOut,
-  Mail,
   Menu,
   Search,
   Settings,
   User as UserIcon,
+  BookUser,
+  Users,
+  ShoppingBag,
+  Package,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -35,11 +38,24 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Logo } from "./logo";
 
-const navItems = [
+const studentNavItems = [
   { label: "Dashboard", href: "/dashboard", icon: Home },
-  { label: "Find a Tutor", href: "/find-tutor", icon: Search },
-  { label: "Inbox", href: "/inbox", icon: Mail },
+  { label: "Find a Teacher", href: "/find-tutor", icon: Search },
   { label: "Bookings", href: "/bookings", icon: LineChart },
+];
+
+const teacherNavItems = [
+    { label: "Dashboard", href: "/dashboard", icon: Home },
+    { label: "Bookings", href: "/bookings", icon: LineChart },
+];
+
+const adminNavItems = [
+  { label: "Overview", href: "/admin-dashboard", icon: Home },
+  { label: "Students", href: "/admin-dashboard/students", icon: Users },
+  { label: "Teachers", href: "/admin-dashboard/teachers", icon: BookUser },
+  { label: "Shop Owners", href: "/admin-dashboard/shops", icon: ShoppingBag },
+  { label: "Bookings", href: "/bookings", icon: LineChart },
+  { label: "Applications", href: "/admin-dashboard/applications", icon: Package },
 ];
 
 const settingsNavItems = [
@@ -60,6 +76,16 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     if (firstName) return firstName.charAt(0);
     return <UserIcon />;
   };
+
+  const getNavItems = () => {
+      switch(userData?.role) {
+          case 'admin': return adminNavItems;
+          case 'teacher': return teacherNavItems;
+          default: return studentNavItems;
+      }
+  }
+
+  const navItems = getNavItems();
 
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">

@@ -30,7 +30,7 @@ export default function FindTutorPage() {
       where("role", "==", "teacher"),
       where("tutorVerificationStatus", "==", "verified")
     )
-  , [firestore]);
+  , []);
 
   const { data: tutors, isLoading, error } = useCollection<any>(tutorsQuery);
 
@@ -56,15 +56,15 @@ export default function FindTutorPage() {
       <Header />
       <main className="flex-grow container mx-auto py-12 px-4">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold font-headline">Find Your Ideal Tutor</h1>
-          <p className="text-lg text-muted-foreground mt-2">Search for verified tutors in your area.</p>
+          <h1 className="text-4xl font-bold font-headline">Find Your Ideal Teacher</h1>
+          <p className="text-lg text-muted-foreground mt-2">Search for verified teachers in your area.</p>
         </div>
 
         <div className="max-w-4xl mx-auto mb-8">
             <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
-                    placeholder="Search by subject, city, or tutor name..."
+                    placeholder="Search by subject, city, or teacher name..."
                     className="pl-10 h-12 rounded-xl"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -73,7 +73,7 @@ export default function FindTutorPage() {
             <div className="flex justify-center mt-4">
                 <Button className="rounded-xl" onClick={() => setShowMap(!showMap)}>
                     <MapPin className="mr-2 h-4 w-4" />
-                    {showMap ? 'Hide Map' : 'Find Nearest Tutor/Institute'}
+                    {showMap ? 'Hide Map' : 'Find Nearest Teacher/Institute'}
                 </Button>
             </div>
         </div>
@@ -82,7 +82,7 @@ export default function FindTutorPage() {
           <div className="mb-8">
             <Card className="rounded-xl shadow-md">
               <CardContent className="p-2">
-                 <GoogleMap tutors={filteredTutors} height="500px" />
+                 <GoogleMap tutors={filteredTutors} height="500px" showSearchBox={true} />
               </CardContent>
             </Card>
           </div>
@@ -138,7 +138,7 @@ export default function FindTutorPage() {
                     </CardContent>
                     <CardFooter>
                          <Button asChild className="w-full rounded-xl">
-                            <Link href={`/tutor/${tutor.id}`}>View Tutor Profile</Link>
+                            <Link href={`/tutor/${tutor.id}`}>View Teacher Profile</Link>
                         </Button>
                     </CardFooter>
                 </Card>
@@ -146,7 +146,7 @@ export default function FindTutorPage() {
            </div>
         )}
          {!isLoading && filteredTutors.length === 0 && (
-          <p className="text-center text-muted-foreground mt-8">No verified tutors found. Try adjusting your search or check back later.</p>
+          <p className="text-center text-muted-foreground mt-8">No verified teachers found. Try adjusting your search or check back later.</p>
         )}
       </main>
       <Footer />
