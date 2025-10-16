@@ -12,7 +12,7 @@ if (getApps().length === 0) {
         app = initializeApp({
           credential: credential.cert(serviceAccount),
           // Add projectId here to be explicit, helps in some environments
-          projectId: serviceAccount.project_id || process.env.GCLOUD_PROJECT,
+          projectId: serviceAccount.project_id,
         });
     } catch (e) {
         console.error("Error parsing FIREBASE_SERVICE_ACCOUNT_KEY:", e);
