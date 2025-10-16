@@ -9,17 +9,38 @@ import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { useChat } from 'ai/react';
 import { useUser } from '@/hooks/use-user';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, orderBy, limit } from 'firebase/firestore';
-import { useMemoFirebase, initializeFirebase } from '@/firebase';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useEffect, useRef } from 'react';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { collection, query, orderBy } from 'firebase/firestore';
+import { initializeFirebase, useMemoFirebase } from '@/firebase';
 
 const { firestore } = initializeFirebase();
 
 export default function AiChatPage() {
-  const { user } = useUser();
-  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat();
+  const { user, userData } = useUser();
+
+  const chatHistoryQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+      collection(firestore, `users/${user.uid}/chatHistory`),
+      orderBy('timestamp', 'asc')
+    );
+  }, [user]);
+
+  const { data: initialMessagesData } = useCollection(chatHistoryQuery);
+
+  const initialMessages = initialMessagesData?.map(msg => ({
+    id: msg.id,
+    role: msg.role as 'user' | 'assistant',
+    content: msg.content
+  })) || [];
+
+  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
+    api: '/api/chat',
+    initialMessages: initialMessages,
+  });
+
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -30,6 +51,7 @@ export default function AiChatPage() {
       });
     }
   }, [messages]);
+
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -53,14 +75,15 @@ export default function AiChatPage() {
                     <div className={`rounded-lg p-3 max-w-[70%] whitespace-pre-wrap ${m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                       <p className="text-sm">{m.content}</p>
                     </div>
-                    {m.role === 'user' && (
+                    {m.role === 'user' && userData && (
                       <Avatar className="w-8 h-8">
+                        <AvatarImage src={userData.profileImageUrl} />
                         <AvatarFallback><User className="w-5 h-5"/></AvatarFallback>
                       </Avatar>
                     )}
                   </div>
                 ))}
-                 {isLoading && messages[messages.length -1]?.role === 'user' && (
+                 {isLoading && (
                   <div className="flex items-start gap-3">
                     <Avatar className="w-8 h-8">
                        <AvatarFallback><Bot className="w-5 h-5"/></AvatarFallback>
