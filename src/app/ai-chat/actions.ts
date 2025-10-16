@@ -5,7 +5,7 @@ import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { getFirestore } from 'firebase-admin/firestore';
 import { app } from '@/firebase/admin-config';
-import { Message } from 'genkit/generate';
+import { Message, Part } from 'genkit/generate';
 
 const firestore = getFirestore(app);
 
@@ -22,8 +22,8 @@ async function getCurrentUserUid() {
 export async function chat(prompt: string, history: Message[]) {
     
     const result = await ai.generate({
-        prompt: prompt,
-        history: history,
+        prompt,
+        history,
     });
 
     const response = result.text;
@@ -33,14 +33,18 @@ export async function chat(prompt: string, history: Message[]) {
         const userUid = await getCurrentUserUid();
         if (userUid) {
             const historyRef = firestore.collection(`users/${userUid}/chatHistory`);
+            
+            const userMessagePart: Part = { text: prompt };
             await historyRef.add({
                 role: 'user',
-                part: { text: prompt },
+                content: [userMessagePart], // Genkit Message format uses a 'content' array of Parts
                 timestamp: new Date(),
             });
+
+            const modelMessagePart: Part = { text: response };
             await historyRef.add({
                 role: 'model',
-                part: { text: response },
+                content: [modelMessagePart], // Save in the same format
                 timestamp: new Date(),
             });
         }
