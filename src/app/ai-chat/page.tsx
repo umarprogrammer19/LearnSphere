@@ -77,7 +77,7 @@ export default function AiChatPage() {
                     </div>
                     {m.role === 'user' && userData && (
                       <Avatar className="w-8 h-8">
-                        <AvatarImage src={userData.profileImageUrl} />
+                        {userData.profileImageUrl && <AvatarImage src={userData.profileImageUrl} />}
                         <AvatarFallback><User className="w-5 h-5"/></AvatarFallback>
                       </Avatar>
                     )}
