@@ -49,7 +49,7 @@ export async function POST(req: Request) {
           },
         ],
         mode: 'payment',
-        success_url: `${origin}/booking-success`, // Redirect to orders page on success
+        success_url: `${origin}/booking-success`,
         cancel_url: `${origin}/cart`,
         metadata: {
           orderId: String(orderId),
