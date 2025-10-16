@@ -26,7 +26,7 @@ export async function chat(prompt: string, history: Message[]) {
         history: history,
     });
 
-    const response = result.text();
+    const response = result.text;
 
     // Save to Firestore - don't await to avoid blocking response
     try {

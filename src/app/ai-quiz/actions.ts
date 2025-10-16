@@ -39,7 +39,7 @@ export async function generateQuiz(input: z.infer<typeof QuizInputSchema>) {
         }
     });
 
-    const quizData = result.output();
+    const quizData = result.output;
 
     if (!quizData) {
         throw new Error("Failed to generate quiz data from the AI model.");
