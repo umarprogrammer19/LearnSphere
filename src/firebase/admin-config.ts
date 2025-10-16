@@ -1,19 +1,24 @@
-import { initializeApp, getApps, App } from 'firebase-admin/app';
-import { credential } from 'firebase-admin';
 
-// This is a placeholder for your service account key.
-// In production, you should use Application Default Credentials.
-const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
-  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
-  : undefined;
+import { initializeApp, getApps, App, credential } from 'firebase-admin/app';
 
 let app: App;
 
 if (getApps().length === 0) {
-  app = initializeApp({
-    credential: serviceAccount ? credential.cert(serviceAccount) : undefined,
-  });
+  const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+
+  if (serviceAccountKey) {
+    // Initialize with service account key if present
+    const serviceAccount = JSON.parse(serviceAccountKey);
+    app = initializeApp({
+      credential: credential.cert(serviceAccount),
+    });
+  } else {
+    // Otherwise, initialize with Application Default Credentials (ADC)
+    // This is the standard for Firebase-managed environments (like App Hosting)
+    app = initializeApp();
+  }
 } else {
+  // Use the existing app if already initialized
   app = getApps()[0];
 }
 
