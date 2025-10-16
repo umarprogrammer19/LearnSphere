@@ -5,7 +5,7 @@ import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { getFirestore } from 'firebase-admin/firestore';
 import { app } from '@/firebase/admin-config';
-import { Message, Part } from 'genkit/generate';
+import { Message, Part } from 'genkit';
 
 const firestore = getFirestore(app);
 
