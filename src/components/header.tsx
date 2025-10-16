@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -11,7 +12,7 @@ import { Logo } from "@/components/logo";
 import { useUser } from "@/hooks/use-user";
 import { handleSignOut } from "@/firebase/auth";
 import { useRouter } from "next/navigation";
-import { User as UserIcon, LogOut, LayoutDashboard, UserCircle, Menu, BrainCircuit, Bot, Book } from "lucide-react";
+import { User as UserIcon, LogOut, LayoutDashboard, UserCircle, Menu, BrainCircuit, Bot, Book, ShoppingCart } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +26,13 @@ import {
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { useCollection } from "@/firebase/firestore/use-collection";
+import { collection } from "firebase/firestore";
+import { useMemoFirebase, initializeFirebase } from "@/firebase";
+import { CartItem } from "@/lib/types";
+import { Badge } from "./ui/badge";
+
+const { firestore } = initializeFirebase();
 
 const navLinks = [
   { href: "#about", label: "About Us" },
@@ -38,6 +46,14 @@ const navLinks = [
 export function Header() {
   const { user, userData, isLoading } = useUser();
   const router = useRouter();
+
+  const cartQuery = useMemoFirebase(
+    () => (user ? collection(firestore, `carts/${user.uid}/items`) : null),
+    [user]
+  );
+  const { data: cartItems } = useCollection<CartItem>(cartQuery);
+
+  const cartItemCount = cartItems?.length || 0;
 
   const onSignOut = async () => {
     await handleSignOut();
@@ -73,10 +89,22 @@ export function Header() {
             </Link>
           ))}
         </nav>
-        <div className="flex flex-1 items-center justify-end space-x-4">
+        <div className="flex flex-1 items-center justify-end space-x-2">
           {isLoading ? (
             <div className="h-10 w-10 animate-pulse rounded-full bg-muted" />
           ) : user ? (
+            <>
+            <Button asChild variant="ghost" size="icon" className="relative">
+                <Link href="/cart">
+                    <ShoppingCart className="h-5 w-5" />
+                    {cartItemCount > 0 && (
+                        <Badge variant="destructive" className="absolute -top-2 -right-2 h-5 w-5 justify-center p-1 text-xs">
+                            {cartItemCount}
+                        </Badge>
+                    )}
+                    <span className="sr-only">Shopping Cart</span>
+                </Link>
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
@@ -140,6 +168,7 @@ export function Header() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            </>
           ) : (
             <>
               <Button asChild className="rounded-xl hidden sm:inline-flex">

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useUser } from "@/hooks/use-user";
@@ -32,7 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -40,6 +41,7 @@ import { initializeFirebase } from "@/firebase";
 import { storage } from "@/firebase/config";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { useState } from "react";
+import { Progress } from "@/components/ui/progress";
 
 const { firestore } = initializeFirebase();
 
@@ -52,7 +54,7 @@ const bookFormSchema = z.object({
   price: z.coerce.number().min(1, "Price must be a positive number."),
   stock: z.coerce.number().int().min(0, "Stock can't be negative."),
   city: z.string().min(2, "City is required."),
-  images: z.any(),
+  images: z.custom<FileList>().refine(files => files.length > 0, 'At least one image is required.'),
 });
 
 
@@ -76,22 +78,23 @@ export default function NewBookPage() {
     },
   });
 
+  const imagesRef = form.register("images");
+
   useEffect(() => {
     if (!isUserLoading && (!user || (userData && userData.role !== 'shop_owner' && userData.role !== 'admin'))) {
       toast({ variant: "destructive", title: "Access Denied" });
       router.push("/dashboard");
     }
-  }, [user, userData, isUserLoading, router, toast]);
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setImageFiles(Array.from(e.target.files));
+     if (userData?.city) {
+      form.setValue('city', userData.city);
     }
-  };
+  }, [user, userData, isUserLoading, router, toast, form]);
 
   const handleFormSubmit = async (values: z.infer<typeof bookFormSchema>) => {
     if (!user) return;
-    if (imageFiles.length === 0) {
+    
+    const files = Array.from(values.images);
+    if (files.length === 0) {
         toast({ variant: "destructive", title: "Please upload at least one image."});
         return;
     }
@@ -101,13 +104,13 @@ export default function NewBookPage() {
 
     try {
         const imageUrls: string[] = [];
-        for (let i = 0; i < imageFiles.length; i++) {
-            const file = imageFiles[i];
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
             const storageRef = ref(storage, `books/${user.uid}/${Date.now()}-${file.name}`);
             await uploadBytes(storageRef, file);
             const url = await getDownloadURL(storageRef);
             imageUrls.push(url);
-            setUploadProgress(((i + 1) / imageFiles.length) * 100);
+            setUploadProgress(((i + 1) / files.length) * 100);
         }
 
       const bookData = {
@@ -137,6 +140,8 @@ export default function NewBookPage() {
       setUploadProgress(null);
     }
   };
+  
+  const selectedImages = form.watch('images');
 
   if (isUserLoading || !user) {
     return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-16 w-16 animate-spin" /></div>;
@@ -153,13 +158,13 @@ export default function NewBookPage() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-8">
               <FormField name="title" control={form.control} render={({ field }) => (
-                <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Title</FormLabel><FormControl><Input placeholder="e.g., The Alchemist" {...field} /></FormControl><FormMessage /></FormItem>
               )}/>
               <FormField name="author" control={form.control} render={({ field }) => (
-                <FormItem><FormLabel>Author</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Author</FormLabel><FormControl><Input placeholder="e.g., Paulo Coelho" {...field} /></FormControl><FormMessage /></FormItem>
               )}/>
               <FormField name="description" control={form.control} render={({ field }) => (
-                <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} rows={5} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea placeholder="A short summary of the book..." {...field} rows={5} /></FormControl><FormMessage /></FormItem>
               )}/>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <FormField name="category" control={form.control} render={({ field }) => (
@@ -175,23 +180,33 @@ export default function NewBookPage() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <FormField name="price" control={form.control} render={({ field }) => (
-                    <FormItem><FormLabel>Price (PKR)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Price (PKR)</FormLabel><FormControl><Input type="number" placeholder="e.g., 500" {...field} /></FormControl><FormMessage /></FormItem>
                 )}/>
                 <FormField name="stock" control={form.control} render={({ field }) => (
-                    <FormItem><FormLabel>Stock</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Stock</FormLabel><FormControl><Input type="number" placeholder="e.g., 10" {...field} /></FormControl><FormMessage /></FormItem>
                 )}/>
                 <FormField name="city" control={form.control} render={({ field }) => (
                     <FormItem><FormLabel>City</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                 )}/>
               </div>
                <FormField name="images" control={form.control} render={({ field }) => (
-                    <FormItem><FormLabel>Book Images</FormLabel><FormControl><Input type="file" multiple accept="image/*" onChange={handleImageChange} /></FormControl><FormDescription>You can upload multiple images.</FormDescription><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Book Images</FormLabel><FormControl><Input type="file" multiple accept="image/*" {...imagesRef} /></FormControl><FormDescription>You can upload multiple images.</FormDescription><FormMessage /></FormItem>
                 )}/>
+                 {selectedImages && selectedImages.length > 0 && (
+                    <div className="space-y-2">
+                        <FormLabel>Selected Files</FormLabel>
+                        <div className="flex flex-wrap gap-2 p-2 border rounded-lg">
+                        {Array.from(selectedImages).map((file: File, index) => (
+                            <div key={index} className="text-xs bg-muted p-2 rounded-md">
+                                {file.name}
+                            </div>
+                        ))}
+                        </div>
+                    </div>
+                )}
                 
                 {isSubmitting && uploadProgress !== null && (
-                    <div className="w-full bg-muted rounded-full h-2.5">
-                        <div className="bg-primary h-2.5 rounded-full" style={{ width: `${uploadProgress}%` }}></div>
-                    </div>
+                    <Progress value={uploadProgress} className="w-full" />
                 )}
 
               <Button type="submit" disabled={isSubmitting} className="w-full rounded-xl">
