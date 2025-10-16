@@ -1,19 +1,19 @@
 "use client";
 
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Loader2, Bot, User, Send } from 'lucide-react';
-import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
-import { useChat } from 'ai/react';
-import { useUser } from '@/hooks/use-user';
+import { Header } from '@/components/header';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useEffect, useRef } from 'react';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, orderBy } from 'firebase/firestore';
 import { initializeFirebase, useMemoFirebase } from '@/firebase';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { useUser } from '@/hooks/use-user';
+import { useChat } from 'ai/react';
+import { collection, orderBy, query } from 'firebase/firestore';
+import { Bot, Loader2, Send, User } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 
 const { firestore } = initializeFirebase();
 
