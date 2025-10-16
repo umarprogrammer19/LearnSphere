@@ -1,3 +1,4 @@
+
 "use client";
 
 import { DashboardLayout } from "@/components/dashboard-layout";
@@ -30,14 +31,22 @@ export default function BookingsPage() {
 
   const bookingsQuery = useMemoFirebase(() => {
     if (!user || !userData) return null;
-    let q = query(collection(firestore, "bookings"), orderBy("createdAt", "desc"));
-    if (userData.role === "student") {
-      q = query(q, where("studentId", "==", user.uid));
-    } else if (userData.role === "teacher") {
-      q = query(q, where("tutorId", "==", user.uid));
+    
+    // Admin can see all bookings, sorted by creation date.
+    if (userData.role === "admin") {
+      return query(collection(firestore, "bookings"), orderBy("createdAt", "desc"));
     }
-    // Admin sees all bookings
-    return q;
+    
+    // For students and teachers, we build a simpler query to avoid needing a composite index.
+    if (userData.role === "student") {
+      return query(collection(firestore, "bookings"), where("studentId", "==", user.uid));
+    } 
+    
+    if (userData.role === "teacher") {
+      return query(collection(firestore, "bookings"), where("tutorId", "==", user.uid));
+    }
+
+    return null; // Return null if no role matches
   }, [user, userData]);
 
   const { data: bookings, isLoading: isLoadingBookings } = useCollection<any>(bookingsQuery);
@@ -45,7 +54,7 @@ export default function BookingsPage() {
   const getStatusVariant = (status: string) => {
     switch (status) {
       case "paid":
-        return "success";
+        return "default";
       case "pending":
       case "cash_pending":
         return "secondary";
@@ -92,12 +101,12 @@ export default function BookingsPage() {
                         {booking.slot.day}, {booking.slot.startTime} - {booking.slot.endTime}
                       </TableCell>
                        <TableCell>
-                         <Badge variant={getStatusVariant(booking.paymentStatus)}>
+                         <Badge variant={getStatusVariant(booking.paymentStatus)} className={booking.paymentStatus === 'paid' ? 'bg-green-500' : ''}>
                             {booking.paymentStatus}
                          </Badge>
                        </TableCell>
                        <TableCell>
-                         <Badge variant={booking.lessonConfirmed ? "success" : "secondary"}>
+                         <Badge variant={booking.lessonConfirmed ? "default" : "secondary"} className={booking.lessonConfirmed ? 'bg-green-500' : ''}>
                             {booking.lessonConfirmed ? "Confirmed" : "Pending"}
                          </Badge>
                        </TableCell>
