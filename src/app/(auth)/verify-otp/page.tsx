@@ -38,14 +38,13 @@ export default function VerifyOtpPage() {
 
   // State to hold Firebase objects. Avoids re-initialization on re-renders.
   const confirmationResultRef = useRef<ConfirmationResult | null>(null);
-  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
 
   const handleAuthError = useCallback((error: any, title: string) => {
     let friendlyMessage = "An unknown error occurred. Please try again.";
       if(error.code === 'auth/invalid-phone-number'){
           friendlyMessage = "Invalid phone number format. Please ensure it's in the format +923XXXXXXXXX."
       } else if (error.code === 'auth/internal-error' || error.code === 'auth/invalid-app-credential') {
-          friendlyMessage = "An internal authentication error occurred. Please check your Firebase project's configuration."
+          friendlyMessage = "An internal authentication error occurred. Please check your Firebase project's configuration and ensure the Identity Platform API is enabled in your Google Cloud project."
       } else if (error.message && error.message.includes('reCAPTCHA')) {
           friendlyMessage = "reCAPTCHA validation failed. Please refresh the page and try again."
       } else if (error.code === 'auth/too-many-requests') {
@@ -68,7 +67,7 @@ export default function VerifyOtpPage() {
 
 
  const sendOtp = useCallback(async () => {
-    if (isResending || !recaptchaVerifierRef.current) return;
+    if (isResending) return;
     
     setIsLoading(true);
     setIsResending(true);
@@ -80,22 +79,32 @@ export default function VerifyOtpPage() {
         setIsResending(false);
         return;
     }
+    
+    if (!window.recaptchaVerifier) {
+      window.recaptchaVerifier = getRecaptchaVerifier('recaptcha-container', toast);
+    }
+    const verifier = window.recaptchaVerifier;
+
+    if (!verifier) {
+       handleAuthError({ message: "Could not create reCAPTCHA verifier." }, "OTP Send Failed");
+       return;
+    }
 
     try {
-      const confirmationResult = await startPhoneSignIn(phoneNumber, recaptchaVerifierRef.current);
+      // Ensure the verifier is rendered before sending OTP
+      const widgetId = await verifier.render();
+      const confirmationResult = await startPhoneSignIn(phoneNumber, verifier);
       confirmationResultRef.current = confirmationResult;
       
       toast({ title: "OTP Sent", description: `A code has been sent to ${phoneNumber}` });
       setCooldown(60); 
     } catch (error: any) {
       handleAuthError(error, "Failed to send OTP");
-      if (recaptchaVerifierRef.current) {
-        recaptchaVerifierRef.current.render().then((widgetId) => {
-            if(typeof widgetId === 'number') {
-                // @ts-ignore
-                window.grecaptcha.reset(widgetId)
-            }
-        });
+      if (window.grecaptcha && window.recaptchaVerifier) {
+         window.recaptchaVerifier.render().then((widgetId) => {
+            // @ts-ignore
+            window.grecaptcha.reset(widgetId);
+         })
       }
     } finally {
       setIsLoading(false);
@@ -107,15 +116,7 @@ export default function VerifyOtpPage() {
   // Effect to initialize reCAPTCHA and send OTP on initial mount.
   useEffect(() => {
      if (!window.recaptchaVerifier) {
-        const verifier = getRecaptchaVerifier('recaptcha-container', toast);
-        if (verifier) {
-            recaptchaVerifierRef.current = verifier;
-            verifier.render().then((widgetId) => {
-                sendOtp(); // Send OTP only after reCAPTCHA is rendered.
-            }).catch(err => {
-                handleAuthError(err, "reCAPTCHA Render Failed")
-            });
-        }
+        sendOtp();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -304,5 +305,6 @@ declare global {
   interface Window {
     recaptchaVerifier?: RecaptchaVerifier;
     confirmationResult?: ConfirmationResult;
+    grecaptcha?: any;
   }
 }
