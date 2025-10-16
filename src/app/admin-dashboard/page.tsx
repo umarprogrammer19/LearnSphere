@@ -1,7 +1,7 @@
 "use client";
 
 import { useUser } from "@/hooks/use-user";
-import { Loader2 } from "lucide-react";
+import { Loader2, Users, BookUser, ShoppingBag, Package } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { DashboardLayout } from "@/components/dashboard-layout";
@@ -12,20 +12,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { collection, query, where, doc, updateDoc } from "firebase/firestore";
 import { initializeFirebase, useMemoFirebase } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { FullUserProfile } from "@/firebase/auth";
+import Link from "next/link";
 
 const { firestore } = initializeFirebase();
 
@@ -44,31 +37,15 @@ export default function AdminDashboardPage() {
     }
   }, [user, userData, isLoading, router, toast]);
 
-  const applicationsQuery = useMemoFirebase(() =>
-    query(
-      collection(firestore, "users"),
-      where("role", "==", "teacher"),
-      where("tutorVerificationStatus", "==", "pending")
-    ),
-    []
-  );
+  const studentsQuery = useMemoFirebase(() => query(collection(firestore, "users"), where("role", "==", "student")), []);
+  const teachersQuery = useMemoFirebase(() => query(collection(firestore, "users"), where("role", "==", "teacher")), []);
+  const applicationsQuery = useMemoFirebase(() => query(collection(firestore, "users"), where("tutorVerificationStatus", "==", "pending")), []);
+  
+  const { data: students, isLoading: isLoadingStudents } = useCollection(studentsQuery);
+  const { data: teachers, isLoading: isLoadingTeachers } = useCollection(teachersQuery);
+  const { data: applications, isLoading: isLoadingApplications } = useCollection(applicationsQuery);
 
-  const { data: applications, isLoading: isLoadingApplications } = useCollection<FullUserProfile>(applicationsQuery);
-
-  const handleVerifyTutor = async (uid: string) => {
-    try {
-      const userRef = doc(firestore, "users", uid);
-      await updateDoc(userRef, {
-        tutorVerificationStatus: "verified",
-        updatedAt: new Date(),
-      });
-      toast({ title: "Teacher Verified", description: "The teacher's profile is now public." });
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Verification Failed", description: error.message });
-    }
-  };
-
-  if (isLoading || !userData) {
+  if (isLoading || !userData || isLoadingStudents || isLoadingTeachers || isLoadingApplications) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -80,60 +57,36 @@ export default function AdminDashboardPage() {
       return null;
   }
 
+  const overviewStats = [
+    { title: "Total Students", value: students?.length || 0, icon: Users, href: "/admin-dashboard/students" },
+    { title: "Total Teachers", value: teachers?.length || 0, icon: BookUser, href: "/admin-dashboard/teachers" },
+    { title: "Pending Applications", value: applications?.length || 0, icon: Package, href: "/admin-dashboard/applications" },
+    { title: "Shop Owners", value: 0, icon: ShoppingBag, href: "/admin-dashboard/shops" },
+  ]
+
   return (
     <DashboardLayout>
-      <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
-        <Card>
-          <CardHeader className="px-7">
-            <CardTitle>Teacher Applications</CardTitle>
-            <CardDescription>
-              Review and approve new teacher applications.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Qualification</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoadingApplications ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center">
-                      <Loader2 className="mx-auto h-6 w-6 animate-spin" />
-                    </TableCell>
-                  </TableRow>
-                ) : applications && applications.length > 0 ? (
-                  applications.map((app) => (
-                    <TableRow key={app.uid}>
-                      <TableCell>{app.firstName} {app.lastName}</TableCell>
-                      <TableCell>{app.email}</TableCell>
-                      <TableCell className="capitalize">{app.qualification}</TableCell>
-                      <TableCell>
-                        <Button
-                          size="sm"
-                          onClick={() => handleVerifyTutor(app.uid)}
-                        >
-                          Verify Teacher
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
-                      No new applications.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+       <CardHeader className="px-0">
+          <CardTitle>Admin Overview</CardTitle>
+          <CardDescription>
+            A high-level view of the LearnSphere platform.
+          </CardDescription>
+        </CardHeader>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {overviewStats.map((stat) => (
+            <Card key={stat.title}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+                    <stat.icon className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{stat.value}</div>
+                    <Link href={stat.href} className="text-xs text-muted-foreground underline">
+                        View all
+                    </Link>
+                </CardContent>
+            </Card>
+        ))}
       </div>
     </DashboardLayout>
   );
