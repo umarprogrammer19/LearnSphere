@@ -35,12 +35,12 @@ export async function chat(prompt: string, history: Message[]) {
             const historyRef = firestore.collection(`users/${userUid}/chatHistory`);
             await historyRef.add({
                 role: 'user',
-                content: prompt,
+                part: { text: prompt },
                 timestamp: new Date(),
             });
             await historyRef.add({
                 role: 'model',
-                content: response,
+                part: { text: response },
                 timestamp: new Date(),
             });
         }
