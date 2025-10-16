@@ -11,7 +11,7 @@ import { Logo } from "@/components/logo";
 import { useUser } from "@/hooks/use-user";
 import { handleSignOut } from "@/firebase/auth";
 import { useRouter } from "next/navigation";
-import { User as UserIcon, LogOut, LayoutDashboard, UserCircle, Menu } from "lucide-react";
+import { User as UserIcon, LogOut, LayoutDashboard, UserCircle, Menu, BrainCircuit, Bot } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,7 +30,8 @@ const navLinks = [
   { href: "#about", label: "About Us" },
   { href: "/find-tutor", label: "Find a Tutor" },
   { href: "/become-tutor", label: "Become a Tutor" },
-  { href: "/contact", label: "Contact Us" },
+  { href: "/ai-chat", label: "AI Chat"},
+  { href: "/ai-quiz", label: "AI Quiz"},
 ];
 
 export function Header() {
@@ -111,6 +112,18 @@ export function Header() {
                   <Link href="/profile">
                     <UserCircle className="mr-2 h-4 w-4" />
                     <span>Profile</span>
+                  </Link>
+                </DropdownMenuItem>
+                 <DropdownMenuItem asChild>
+                  <Link href="/ai-chat">
+                    <Bot className="mr-2 h-4 w-4" />
+                    <span>AI Chat</span>
+                  </Link>
+                </DropdownMenuItem>
+                 <DropdownMenuItem asChild>
+                  <Link href="/ai-quiz">
+                    <BrainCircuit className="mr-2 h-4 w-4" />
+                    <span>AI Quiz</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

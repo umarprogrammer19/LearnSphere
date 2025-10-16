@@ -38,8 +38,8 @@ body {
     --sidebar-background: 240 10% 3.9%; /* A dark color for the sidebar */
     --sidebar-foreground: 210 40% 98%; /* Light text for the sidebar */
     --sidebar-muted-foreground: 215 20% 65%;
-    --sidebar-active: 142 76% 36%; /* Active link background - a green color */
-    --sidebar-active-foreground: 210 40% 98%;
+    --sidebar-active: var(--primary); /* Active link background - a green color */
+    --sidebar-active-foreground: var(--primary-foreground);
     --sidebar-hover: 240 4% 15%; /* Hover state background */
   }
   .dark {
@@ -71,8 +71,8 @@ body {
     --sidebar-background: 222 47% 11%;
     --sidebar-foreground: 210 40% 98%;
     --sidebar-muted-foreground: 215 20% 65%;
-    --sidebar-active: 142 71% 45%; /* A brighter green for dark mode */
-    --sidebar-active-foreground: 210 40% 98%;
+    --sidebar-active: var(--primary);
+    --sidebar-active-foreground: var(--primary-foreground);
     --sidebar-hover: 217 33% 17%;
   }
 }

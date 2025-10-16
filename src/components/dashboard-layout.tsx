@@ -20,6 +20,8 @@ import {
   Users,
   ShoppingBag,
   Package,
+  Bot,
+  BrainCircuit,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -57,6 +59,11 @@ const adminNavItems = [
   { label: "Bookings", href: "/bookings", icon: LineChart },
   { label: "Applications", href: "/admin-dashboard/applications", icon: Package },
 ];
+
+const aiNavItems = [
+  { label: "AI Chat", href: "/ai-chat", icon: Bot },
+  { label: "AI Quiz", href: "/ai-quiz", icon: BrainCircuit },
+]
 
 const settingsNavItems = [
   { label: "Account Settings", href: "/settings", icon: Settings },
@@ -102,6 +109,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               {navItems.map((item) => (
                 <NavItem key={item.href} item={item} />
               ))}
+              <span className="px-3 py-2 mt-4 text-xs font-semibold text-[--sidebar-muted-foreground]">AI TOOLS</span>
+              {aiNavItems.map((item) => (
+                <NavItem key={item.href} item={item} />
+              ))}
               <span className="px-3 py-2 mt-4 text-xs font-semibold text-[--sidebar-muted-foreground]">SETTINGS</span>
               {settingsNavItems.map((item) => (
                 <NavItem key={item.href} item={item} />
@@ -142,6 +153,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 </Link>
                 <span className="px-3 py-2 text-sm font-semibold text-[--sidebar-muted-foreground]">OVERVIEW</span>
                 {navItems.map((item) => (
+                  <NavItem key={item.href} item={item} isMobile />
+                ))}
+                 <span className="px-3 py-2 mt-4 text-sm font-semibold text-[--sidebar-muted-foreground]">AI TOOLS</span>
+                {aiNavItems.map((item) => (
                   <NavItem key={item.href} item={item} isMobile />
                 ))}
                 <span className="px-3 py-2 mt-4 text-sm font-semibold text-[--sidebar-muted-foreground]">SETTINGS</span>
