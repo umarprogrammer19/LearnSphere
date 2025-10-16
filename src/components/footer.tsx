@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -7,7 +8,7 @@ import { FaFacebook, FaTwitter, FaInstagram } from "react-icons/fa";
 export function Footer() {
   return (
     <footer className="bg-white border-t">
-      <div className="container mx-auto py-12 px-20">
+      <div className="container mx-auto py-12 px-4 md:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="md:col-span-1">
             <Logo />
@@ -23,7 +24,7 @@ export function Footer() {
           <div>
             <h3 className="font-semibold text-gray-900">Quick Links</h3>
             <ul className="mt-4 space-y-2 text-sm">
-              <li><Link href="#about" className="text-gray-600 hover:text-primary">About Us</Link></li>
+              <li><Link href="/#about" className="text-gray-600 hover:text-primary">About Us</Link></li>
               <li><Link href="/find-tutor" className="text-gray-600 hover:text-primary">Find a Tutor</Link></li>
               <li><Link href="/become-tutor" className="text-gray-600 hover:text-primary">Become a Tutor</Link></li>
             </ul>

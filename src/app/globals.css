@@ -1,10 +1,7 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-body {
-  font-family: Arial, Helvetica, sans-serif;
-}
 
 @layer base {
   :root {
@@ -18,7 +15,7 @@ body {
     --primary-foreground: 210 40% 98%;
     --secondary: 220 14% 96%;
     --secondary-foreground: 222 47% 11%;
-    --muted: 220 9% 96%;
+    --muted: 220 14% 96%; /* #F1F5F9 */
     --muted-foreground: 220 9% 45%; /* #64748B */
     --accent: 44 98% 65%; /* #FFCE4E */
     --accent-foreground: 24 9.8% 10%;
@@ -38,8 +35,9 @@ body {
     --sidebar-background: 240 10% 3.9%; /* A dark color for the sidebar */
     --sidebar-foreground: 210 40% 98%; /* Light text for the sidebar */
     --sidebar-muted-foreground: 215 20% 65%;
-    --sidebar-active: var(--primary); /* Active link background */
-    --sidebar-active-foreground: var(--primary-foreground);
+    --sidebar-border: 240 4% 15%;
+    --sidebar-active: hsl(var(--primary)); /* Active link background */
+    --sidebar-active-foreground: hsl(var(--primary-foreground));
     --sidebar-hover: 240 4% 15%; /* Hover state background */
   }
   .dark {
@@ -71,8 +69,9 @@ body {
     --sidebar-background: 222 47% 11%;
     --sidebar-foreground: 210 40% 98%;
     --sidebar-muted-foreground: 215 20% 65%;
-    --sidebar-active: var(--primary);
-    --sidebar-active-foreground: var(--primary-foreground);
+    --sidebar-border: 217 33% 17%;
+    --sidebar-active: hsl(var(--primary));
+    --sidebar-active-foreground: hsl(var(--primary-foreground));
     --sidebar-hover: 217 33% 17%;
   }
 }
