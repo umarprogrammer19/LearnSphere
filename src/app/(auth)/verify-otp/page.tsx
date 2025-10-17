@@ -73,7 +73,7 @@ function VerifyOtpContent() {
     
     try {
       if (!window.recaptchaVerifier) {
-        window.recaptchaVerifier = getRecaptchaVerifier('recaptcha-container', toast);
+        window.recaptchaVerifier = getRecaptchaVerifier('recaptcha-container', toast) as RecaptchaVerifier;
       }
       const verifier = window.recaptchaVerifier;
 
