@@ -23,7 +23,7 @@ export default function VerifyOtpPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [cooldown, setCooldown] = useState(0);
-  
+
   const phoneNumber = searchParams.get("phone") || "";
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -32,20 +32,20 @@ export default function VerifyOtpPage() {
 
   const handleAuthError = useCallback((error: any, title: string) => {
     let friendlyMessage = "An unknown error occurred. Please try again.";
-      if(error.code === 'auth/invalid-phone-number'){
-          friendlyMessage = "Invalid phone number format. Please ensure it's in the format +923XXXXXXXXX."
-      } else if (error.code === 'auth/internal-error' || error.code === 'auth/invalid-app-credential') {
-          friendlyMessage = "An internal authentication error occurred. Please check your Firebase project's configuration and ensure the Identity Platform API is enabled in your Google Cloud project."
-      } else if (error.message && error.message.includes('reCAPTCHA')) {
-          friendlyMessage = "reCAPTCHA validation failed. Please refresh the page and try again."
-      } else if (error.code === 'auth/too-many-requests') {
-          friendlyMessage = "Too many requests. Please wait a few minutes before trying again."
-      } else if (error.code === 'auth/argument-error') {
-          friendlyMessage = "There was an issue with reCAPTCHA. Please refresh and try again."
-      }
-      else {
-          friendlyMessage = error.message;
-      }
+    if (error.code === 'auth/invalid-phone-number') {
+      friendlyMessage = "Invalid phone number format. Please ensure it's in the format +923XXXXXXXXX."
+    } else if (error.code === 'auth/internal-error' || error.code === 'auth/invalid-app-credential') {
+      friendlyMessage = "An internal authentication error occurred. Please check your Firebase project's configuration and ensure the Identity Platform API is enabled in your Google Cloud project."
+    } else if (error.message && error.message.includes('reCAPTCHA')) {
+      friendlyMessage = "reCAPTCHA validation failed. Please refresh the page and try again."
+    } else if (error.code === 'auth/too-many-requests') {
+      friendlyMessage = "Too many requests. Please wait a few minutes before trying again."
+    } else if (error.code === 'auth/argument-error') {
+      friendlyMessage = "There was an issue with reCAPTCHA. Please refresh and try again."
+    }
+    else {
+      friendlyMessage = error.message;
+    }
     toast({
       variant: "destructive",
       title: title,
@@ -57,28 +57,28 @@ export default function VerifyOtpPage() {
   }, [toast]);
 
 
- const sendOtp = useCallback(async () => {
+  const sendOtp = useCallback(async () => {
     if (isResending) return;
-    
+
     setIsLoading(true);
     setIsResending(true);
 
     if (!phoneNumber) {
-        toast({ variant: "destructive", title: "Error", description: "Phone number not provided." });
-        router.push("/signup");
-        setIsLoading(false);
-        setIsResending(false);
-        return;
+      toast({ variant: "destructive", title: "Error", description: "Phone number not provided." });
+      router.push("/signup");
+      setIsLoading(false);
+      setIsResending(false);
+      return;
     }
-    
+
     if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = getRecaptchaVerifier('recaptcha-container', toast);
+      window.recaptchaVerifier = getRecaptchaVerifier('recaptcha-container', toast) as RecaptchaVerifier;
     }
     const verifier = window.recaptchaVerifier;
 
     if (!verifier) {
-       handleAuthError({ message: "Could not create reCAPTCHA verifier." }, "OTP Send Failed");
-       return;
+      handleAuthError({ message: "Could not create reCAPTCHA verifier." }, "OTP Send Failed");
+      return;
     }
 
     try {
@@ -86,16 +86,16 @@ export default function VerifyOtpPage() {
       const widgetId = await verifier.render();
       const confirmationResult = await startPhoneSignIn(phoneNumber, verifier);
       confirmationResultRef.current = confirmationResult;
-      
+
       toast({ title: "OTP Sent", description: `A code has been sent to ${phoneNumber}` });
-      setCooldown(60); 
+      setCooldown(60);
     } catch (error: any) {
       handleAuthError(error, "Failed to send OTP");
       if (window.grecaptcha && window.recaptchaVerifier) {
-         window.recaptchaVerifier.render().then((widgetId) => {
-            // @ts-ignore
-            window.grecaptcha.reset(widgetId);
-         })
+        window.recaptchaVerifier.render().then((widgetId) => {
+          // @ts-ignore
+          window.grecaptcha.reset(widgetId);
+        })
       }
     } finally {
       setIsLoading(false);
@@ -105,10 +105,10 @@ export default function VerifyOtpPage() {
 
   // Effect to initialize reCAPTCHA and send OTP on initial mount.
   useEffect(() => {
-     if (!window.recaptchaVerifier) {
-        sendOtp();
+    if (!window.recaptchaVerifier) {
+      sendOtp();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Effect for cooldown timer
@@ -117,7 +117,7 @@ export default function VerifyOtpPage() {
       const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
       return () => clearTimeout(timer);
     } else if (cooldown === 0 && isResending) {
-        setIsResending(false);
+      setIsResending(false);
     }
   }, [cooldown, isResending]);
 
@@ -126,20 +126,20 @@ export default function VerifyOtpPage() {
     if (isResending || cooldown > 0) return;
     await sendOtp();
   };
-  
+
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement>,
     index: number
   ) => {
     const { value } = e.target;
     if (/^[0-9]$/.test(value) || value === "") {
-        const newOtp = [...otp];
-        newOtp[index] = value;
-        setOtp(newOtp);
+      const newOtp = [...otp];
+      newOtp[index] = value;
+      setOtp(newOtp);
 
-        if (value && index < 5) {
+      if (value && index < 5) {
         inputRefs.current[index + 1]?.focus();
-        }
+      }
     }
   };
 
@@ -161,7 +161,7 @@ export default function VerifyOtpPage() {
       inputRefs.current[5]?.focus();
     }
   };
-  
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const code = otp.join("");
@@ -173,52 +173,52 @@ export default function VerifyOtpPage() {
       });
       return;
     }
-    
+
     const activeConfirmationResult = confirmationResultRef.current;
     const currentUser = auth.currentUser;
 
 
     if (!activeConfirmationResult) {
-        toast({
-            variant: "destructive",
-            title: "Verification Expired",
-            description: "Please request a new OTP code.",
-        });
-        return;
+      toast({
+        variant: "destructive",
+        title: "Verification Expired",
+        description: "Please request a new OTP code.",
+      });
+      return;
     }
     if (!currentUser) {
-        toast({
-            variant: "destructive",
-            title: "Not Logged In",
-            description: "You must be logged in to verify a phone number.",
-        });
-        router.push("/login");
-        return;
+      toast({
+        variant: "destructive",
+        title: "Not Logged In",
+        description: "You must be logged in to verify a phone number.",
+      });
+      router.push("/login");
+      return;
     }
 
     setIsLoading(true);
     try {
       await confirmOtp(activeConfirmationResult, code, currentUser, phoneNumber);
       toast({ title: "Phone Verified!", description: "Your phone number has been successfully verified." });
-      router.push("/become-tutor"); 
+      router.push("/become-tutor");
     } catch (error: any) {
       let friendlyMessage = "An unknown error occurred.";
       switch (error.code) {
-          case "auth/invalid-verification-code":
-              friendlyMessage = "The verification code is invalid. Please try again.";
-              break;
-          case "auth/code-expired":
-              friendlyMessage = "The verification code has expired. Please request a new one.";
-              break;
-          case "auth/missing-verification-code":
-              friendlyMessage = "Please enter the 6-digit OTP.";
-              break;
-          case "auth/too-many-requests":
-              friendlyMessage = "Too many requests. Please try again later.";
-              break;
-          default:
-            friendlyMessage = error.message;
-            break;
+        case "auth/invalid-verification-code":
+          friendlyMessage = "The verification code is invalid. Please try again.";
+          break;
+        case "auth/code-expired":
+          friendlyMessage = "The verification code has expired. Please request a new one.";
+          break;
+        case "auth/missing-verification-code":
+          friendlyMessage = "Please enter the 6-digit OTP.";
+          break;
+        case "auth/too-many-requests":
+          friendlyMessage = "Too many requests. Please try again later.";
+          break;
+        default:
+          friendlyMessage = error.message;
+          break;
       }
       toast({
         variant: "destructive",
@@ -251,7 +251,7 @@ export default function VerifyOtpPage() {
           {otp.map((digit, index) => (
             <Input
               key={index}
-              ref={(el) => (inputRefs.current[index] = el)}
+              ref={(el) => { inputRefs.current[index] = el }}
               className="w-12 h-14 text-center text-2xl rounded-xl"
               maxLength={1}
               value={digit}
@@ -267,7 +267,7 @@ export default function VerifyOtpPage() {
           {isLoading && !isResending ? <Loader2 className="animate-spin" /> : "Verify Phone Number"}
         </Button>
       </form>
-       <div className="mt-8 text-center text-sm text-muted-foreground">
+      <div className="mt-8 text-center text-sm text-muted-foreground">
         <span>Didn&apos;t receive a code? </span>
         <Button
           variant="link"
@@ -279,7 +279,7 @@ export default function VerifyOtpPage() {
           {cooldown > 0 ? (
             `Resend in ${cooldown}s`
           ) : (
-             "Resend Code"
+            "Resend Code"
           )}
         </Button>
       </div>
