@@ -164,7 +164,7 @@ export function BookingModal({ tutor, isOpen, setIsOpen }: BookingModalProps) {
                                         <div className="flex justify-between w-full">
                                             <span>{slot.day}, {slot.startTime} - {slot.endTime}</span>
                                             <Badge variant={slot.availableSeats > 0 ? "secondary" : "destructive"}>
-                                                {slot.availableSeats > 0 ? `${slot.availableSeats} seats left` : ''}
+                                                {slot.availableSeats > 0 ? `${slot.availableSeats} seats left` : null}
                                             </Badge>
                                         </div>
                                     </SelectItem>
