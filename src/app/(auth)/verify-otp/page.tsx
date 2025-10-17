@@ -1,6 +1,7 @@
+
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +14,7 @@ import {
 import { ConfirmationResult, RecaptchaVerifier, getAuth } from "firebase/auth";
 import { Loader2 } from "lucide-react";
 
-export default function VerifyOtpPage() {
+function VerifyOtpContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -60,35 +61,34 @@ export default function VerifyOtpPage() {
   const sendOtp = useCallback(async () => {
     if (isResending) return;
 
-    setIsLoading(true);
+    // Do not set isLoading to true here, as the initial load might not be a "resend" action
     setIsResending(true);
 
     if (!phoneNumber) {
       toast({ variant: "destructive", title: "Error", description: "Phone number not provided." });
       router.push("/signup");
-      setIsLoading(false);
       setIsResending(false);
       return;
     }
-
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = getRecaptchaVerifier('recaptcha-container', toast) as RecaptchaVerifier;
-    }
-    const verifier = window.recaptchaVerifier;
-
-    if (!verifier) {
-      handleAuthError({ message: "Could not create reCAPTCHA verifier." }, "OTP Send Failed");
-      return;
-    }
-
+    
     try {
-      // Ensure the verifier is rendered before sending OTP
+      if (!window.recaptchaVerifier) {
+        window.recaptchaVerifier = getRecaptchaVerifier('recaptcha-container', toast);
+      }
+      const verifier = window.recaptchaVerifier;
+
+      if (!verifier) {
+        handleAuthError({ message: "Could not create reCAPTCHA verifier." }, "OTP Send Failed");
+        return;
+      }
+      
       const widgetId = await verifier.render();
       const confirmationResult = await startPhoneSignIn(phoneNumber, verifier);
       confirmationResultRef.current = confirmationResult;
 
       toast({ title: "OTP Sent", description: `A code has been sent to ${phoneNumber}` });
       setCooldown(60);
+
     } catch (error: any) {
       handleAuthError(error, "Failed to send OTP");
       if (window.grecaptcha && window.recaptchaVerifier) {
@@ -98,27 +98,29 @@ export default function VerifyOtpPage() {
         })
       }
     } finally {
-      setIsLoading(false);
+        // Only set loading to false if it was true for the user action
+        setIsResending(false);
     }
   }, [phoneNumber, toast, router, handleAuthError, isResending]);
 
 
   // Effect to initialize reCAPTCHA and send OTP on initial mount.
   useEffect(() => {
-    if (!window.recaptchaVerifier) {
-      sendOtp();
+    if (phoneNumber) { // Only send OTP if a phone number is present
+        sendOtp();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [phoneNumber]); // Depend only on phoneNumber to run once when it's available
 
   // Effect for cooldown timer
   useEffect(() => {
+    let timer: NodeJS.Timeout;
     if (cooldown > 0) {
-      const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
-      return () => clearTimeout(timer);
-    } else if (cooldown === 0 && isResending) {
+      timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
+    } else if (isResending) {
       setIsResending(false);
     }
+    return () => clearTimeout(timer);
   }, [cooldown, isResending]);
 
 
@@ -264,7 +266,7 @@ export default function VerifyOtpPage() {
           ))}
         </div>
         <Button type="submit" className="w-full h-12 rounded-xl text-base" disabled={isLoading}>
-          {isLoading && !isResending ? <Loader2 className="animate-spin" /> : "Verify Phone Number"}
+          {isLoading ? <Loader2 className="animate-spin" /> : "Verify Phone Number"}
         </Button>
       </form>
       <div className="mt-8 text-center text-sm text-muted-foreground">
@@ -285,6 +287,15 @@ export default function VerifyOtpPage() {
       </div>
     </div>
   );
+}
+
+
+export default function VerifyOtpPage() {
+    return (
+        <Suspense fallback={<div className="flex w-full items-center justify-center"><Loader2 className="h-10 w-10 animate-spin"/></div>}>
+            <VerifyOtpContent />
+        </Suspense>
+    )
 }
 
 declare global {
