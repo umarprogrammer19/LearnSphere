@@ -1,13 +1,11 @@
 "use client";
 
-import { useState, useMemo, useEffect } from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
-import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
-import { Input } from '@/components/ui/input';
+import { Header } from '@/components/header';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -15,20 +13,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { initializeFirebase } from '@/firebase';
+import { useToast } from '@/hooks/use-toast';
+import { useUser } from '@/hooks/use-user';
+import { mockBooks } from '@/lib/books-data'; // Using mock data
+import { Book } from '@/lib/types';
+import { addDoc, collection } from 'firebase/firestore';
 import {
   Heart,
   Loader2,
   Search,
   ShoppingCart,
 } from 'lucide-react';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, addDoc } from 'firebase/firestore';
-import { initializeFirebase, useMemoFirebase } from '@/firebase';
-import { Book } from '@/lib/types';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
-import { useUser } from '@/hooks/use-user';
-import { mockBooks } from '@/lib/books-data'; // Using mock data
+import Image from 'next/image';
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
 
 const { firestore } = initializeFirebase();
 
@@ -145,7 +144,7 @@ export default function BooksMarketplacePage() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header />
-      <main className="flex-grow container mx-auto py-12 px-4">
+      <main className="flex-grow container mx-auto py-12 px-10">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold font-headline">Books Marketplace</h1>
           <p className="text-lg text-muted-foreground mt-2">Find your next favorite read.</p>
