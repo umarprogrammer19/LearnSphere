@@ -3,6 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 
+// Meta Title And Descriptions
 export const metadata: Metadata = {
   title: 'LearnSphere',
   description: 'A hyperlocal education marketplace for Pakistan.',
