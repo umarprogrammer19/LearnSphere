@@ -48,7 +48,6 @@ export default function WishlistPage() {
         price: item.price,
         image: item.image,
         quantity: 1,
-        // stock is not available on wishlist item, will need to fetch book or handle in cart
       });
 
       // Remove from wishlist
