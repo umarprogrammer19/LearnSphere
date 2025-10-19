@@ -256,6 +256,7 @@ export default function TutorDetailPage() {
 
         <Footer />
       </div>
+      {/* Check if tutor then show booking modal */}
       {tutor && <BookingModal tutor={tutor} isOpen={isBookingModalOpen} setIsOpen={setIsBookingModalOpen} />}
     </>
   )
