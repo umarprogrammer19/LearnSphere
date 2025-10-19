@@ -54,6 +54,7 @@ export default function WishlistPage() {
       const itemRef = doc(firestore, `wishlists/${user.uid}/items`, item.id);
       await deleteDoc(itemRef);
 
+      // Show toast success
       toast({ title: 'Moved to cart!', description: `${item.title} has been moved to your cart.` });
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Error', description: error.message });
