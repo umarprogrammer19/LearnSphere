@@ -10,7 +10,7 @@ import { initializeFirebase } from "@/firebase";
 // initialize firebase app
 const { firestore } = initializeFirebase();
 
-
+// Main Hook
 export const useUser = () => {
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<FullUserProfile | null>(null);
