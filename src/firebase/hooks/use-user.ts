@@ -28,6 +28,7 @@ export const useUser = () => {
     return () => unsubscribeAuth();
   }, []);
 
+  // fetch when mount 
   useEffect(() => {
     if (user) {
       setIsLoading(true);
