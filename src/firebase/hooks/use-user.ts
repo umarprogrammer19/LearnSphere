@@ -7,6 +7,7 @@ import { doc, onSnapshot, DocumentData } from "firebase/firestore";
 import { onAuthStateChanged, FullUserProfile } from "@/firebase/auth";
 import { initializeFirebase } from "@/firebase";
 
+// initialize firebase app
 const { firestore } = initializeFirebase();
 
 
