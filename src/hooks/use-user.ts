@@ -6,6 +6,7 @@ import { doc, onSnapshot, DocumentData } from "firebase/firestore";
 import { onAuthStateChange } from "@/firebase/auth";
 import { initializeFirebase } from "@/firebase";
 
+// For Initialize Firebase.
 const { firestore } = initializeFirebase();
 
 export interface UserData extends DocumentData {
