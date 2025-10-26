@@ -9,6 +9,7 @@ import { initializeFirebase } from "@/firebase";
 // For Initialize Firebase.
 const { firestore } = initializeFirebase();
 
+// UserData Class 
 export interface UserData extends DocumentData {
   firstName: string;
   lastName: string;
