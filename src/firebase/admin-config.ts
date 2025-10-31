@@ -3,6 +3,7 @@ import { initializeApp, getApps, App, credential } from 'firebase-admin/app';
 
 let app: App;
 
+// check for admin
 if (getApps().length === 0) {
   const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 
