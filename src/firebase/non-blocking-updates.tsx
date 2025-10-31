@@ -12,7 +12,7 @@ import {
 import { errorEmitter } from '@/firebase/error-emitter';
 import {FirestorePermissionError} from '@/firebase/errors';
 
-/**
+/*
  * Initiates a setDoc operation for a document reference.
  * Does NOT await the write operation internally.
  */
