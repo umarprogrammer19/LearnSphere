@@ -136,7 +136,7 @@ export const useFirestore = (): Firestore => {
   return firestore;
 };
 
-/** Hook to access Firebase App instance. */
+/** Hook to access Firebase App. */
 export const useFirebaseApp = (): FirebaseApp => {
   const { firebaseApp } = useFirebase();
   return firebaseApp;
