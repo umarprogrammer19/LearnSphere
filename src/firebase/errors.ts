@@ -118,6 +118,7 @@ ${JSON.stringify(requestObject, null, 2)}`;
  * available in Firestore Security Rules.
  */
 
+// Interface for err opt
 export interface FirestorePermissionErrorOptions {
   operation: string;
   path: string;
