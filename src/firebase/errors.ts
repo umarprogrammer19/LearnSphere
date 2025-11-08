@@ -1,6 +1,7 @@
 'use client';
 import { getAuth, type User } from 'firebase/auth';
 
+// Type for err 
 type SecurityRuleContext = {
   path: string;
   operation: 'get' | 'list' | 'create' | 'update' | 'delete' | 'write';
