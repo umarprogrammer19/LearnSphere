@@ -28,6 +28,7 @@ interface FirebaseAuthObject {
   token: FirebaseAuthToken;
 }
 
+// Type for security
 interface SecurityRuleRequest {
   auth: FirebaseAuthObject | null;
   method: string;
