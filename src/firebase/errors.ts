@@ -125,6 +125,8 @@ export interface FirestorePermissionErrorOptions {
   message?: string;
   cause?: Error;
 }
+
+// Permission Class
 export class FirestorePermissionError extends Error {
   operation: string;
   path: string;
