@@ -22,6 +22,7 @@ interface FirebaseAuthToken {
   };
 }
 
+// Object
 interface FirebaseAuthObject {
   uid: string;
   token: FirebaseAuthToken;
