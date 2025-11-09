@@ -32,7 +32,7 @@ import {
 const { auth, firestore } = initializeFirebase();
 
 
-// --- User data types ---
+// User data types
 export interface UserData {
   firstName: string;
   lastName: string;
