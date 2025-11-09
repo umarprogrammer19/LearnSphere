@@ -250,7 +250,7 @@ export const confirmOtp = async (
 
 
 
-// --- Other Auth Actions ---
+// Other Auth Actions
 export const handlePasswordReset = async (email: string) => {
   return sendPasswordResetEmail(auth, email);
 };
@@ -259,7 +259,7 @@ export const handleSignOut = async () => {
   return signOut(auth);
 };
 
-// --- Auth State Observer ---
+// Auth State Observer 
 export const onAuthStateChange = (callback: (user: User | null) => void) => {
   return onFirebaseAuthStateChanged(auth, callback);
 };
