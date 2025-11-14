@@ -32,7 +32,7 @@ import {
 const { auth, firestore } = initializeFirebase();
 
 
-// --- User data types ---
+// User data types
 export interface UserData {
   firstName: string;
   lastName: string;
@@ -70,7 +70,7 @@ export interface FullUserProfile extends UserData {
 }
 
 
-// --- User Profile Management ---
+// User Profile Management
 const createUserProfile = async (user: User, additionalData: Partial<UserData> = {}) => {
   const userRef = doc(firestore, "users", user.uid);
   const userDoc = await getDoc(userRef);
@@ -121,7 +121,7 @@ const createUserProfile = async (user: User, additionalData: Partial<UserData> =
   await setDoc(userRef, data, { merge: true });
 };
 
-// --- Email/Password Auth ---
+// Email/Password Auth
 export const handleEmailSignUp = async (
   email: string,
   password: string,
@@ -164,7 +164,7 @@ export const handleEmailSignIn = async (email: string, password: string) => {
 };
 
 
-// --- Social Logins ---
+// Social Logins
 const handleSocialSignIn = async (providerName: "google" | "microsoft") => {
   const provider = providerName === 'google'
     ? new GoogleAuthProvider()
@@ -188,7 +188,7 @@ export const handleGoogleSignIn = () => handleSocialSignIn("google");
 
 export const handleMicrosoftSignIn = () => handleSocialSignIn("microsoft");
 
-// --- Phone Auth (OTP) ---
+// Phone Auth (OTP)
 export const getRecaptchaVerifier = (containerId: string, toast: ReturnType<typeof useToast>['toast']) => {
   if (typeof window === 'undefined') {
     return null; 
@@ -250,7 +250,7 @@ export const confirmOtp = async (
 
 
 
-// --- Other Auth Actions ---
+// Other Auth Actions
 export const handlePasswordReset = async (email: string) => {
   return sendPasswordResetEmail(auth, email);
 };
@@ -259,7 +259,7 @@ export const handleSignOut = async () => {
   return signOut(auth);
 };
 
-// --- Auth State Observer ---
+// Auth State Observer 
 export const onAuthStateChange = (callback: (user: User | null) => void) => {
   return onFirebaseAuthStateChanged(auth, callback);
 };
