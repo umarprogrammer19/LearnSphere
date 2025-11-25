@@ -67,7 +67,7 @@ export function BookingModal({ tutor, isOpen, setIsOpen }: BookingModalProps) {
         setIsLoading(true);
 
         try {
-            // Prevent double booking
+            
             const bookingsRef = collection(firestore, "bookings");
             const q = query(bookingsRef,
                 where("tutorId", "==", tutor.id),
